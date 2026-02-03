@@ -1,0 +1,29 @@
+# SSH keys
+*.pem
+*.key
+
+# Environment and config files
+.env
+.env.local
+.env.*.local
+config.env
+
+# Logs
+*.log
+*.log.*
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
