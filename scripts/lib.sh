@@ -10,15 +10,19 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Default values (can be overridden by .env or command-line)
-export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-west-2}"
-export SSH_KEY_PATH="${SSH_KEY_PATH:-~/.ssh/my-datascience-key.pem}"
-export KEY_NAME="${KEY_NAME:-my-datascience-key}"
-export SECURITY_GROUP_ID="${SECURITY_GROUP_ID:-sg-xxxxxxxx}"
-export GPU_AMI_ID="${GPU_AMI_ID:-ami-xxxxxxxx}"
-export DEFAULT_GPU_INSTANCE_TYPE="${DEFAULT_GPU_INSTANCE_TYPE:-g4dn.xlarge}"
-export GPU_INSTANCE_NAME="${GPU_INSTANCE_NAME:-gpu-training}"
-export DEFAULT_GPU_VOLUME_SIZE="${DEFAULT_GPU_VOLUME_SIZE:-100}"
+# Load configuration first (will set variables from .env if file exists)
+# Handle different ways lib.sh might be sourced
+if [ -n "${BASH_SOURCE[0]:-}" ]; then
+  config_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  config_dir="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
+fi
+env_file="${config_dir}/config/.env"
+
+if [ -f "$env_file" ]; then
+  # shellcheck source=/dev/null
+  source "$env_file"
+fi
 
 # Load configuration from .env file if it exists
 load_config() {
@@ -132,3 +136,14 @@ init_env() {
   load_config
   check_aws_cli
 }
+
+# Set default values (used only if config doesn't set them)
+# These are applied after config loading so they don't override config values
+: "${AWS_DEFAULT_REGION:=us-west-2}"
+: "${SSH_KEY_PATH:=~/.ssh/my-datascience-key.pem}"
+: "${KEY_NAME:=my-datascience-key}"
+: "${SECURITY_GROUP_ID:=sg-xxxxxxxx}"
+: "${GPU_AMI_ID:=ami-xxxxxxxx}"
+: "${DEFAULT_GPU_INSTANCE_TYPE:=g4dn.xlarge}"
+: "${GPU_INSTANCE_NAME:=gpu-training}"
+: "${DEFAULT_GPU_VOLUME_SIZE:=100}"

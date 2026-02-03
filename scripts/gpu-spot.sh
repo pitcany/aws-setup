@@ -7,13 +7,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
-# Default values
-INSTANCE_TYPE=""
-KEY_NAME=""
-SSH_KEY_PATH=""
-AMI_ID=""
-VOLUME_SIZE=""
-
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -53,12 +46,13 @@ done
 init_env
 check_ssh_key
 
-# Use provided values or fall back to config
-INSTANCE_TYPE="${INSTANCE_TYPE:-$DEFAULT_GPU_INSTANCE_TYPE}"
-KEY_NAME="${KEY_NAME:-$KEY_NAME}"
-SSH_KEY_PATH="${SSH_KEY_PATH:-$SSH_KEY_PATH}"
-AMI_ID="${AMI_ID:-$GPU_AMI_ID}"
-VOLUME_SIZE="${VOLUME_SIZE:-$DEFAULT_GPU_VOLUME_SIZE}"
+# Use provided values or fall back to config or hardcoded defaults
+: "${INSTANCE_TYPE:=${DEFAULT_GPU_INSTANCE_TYPE:-g4dn.xlarge}}"
+: "${KEY_NAME:=${KEY_NAME:-my-datascience-key}}"
+: "${SSH_KEY_PATH:=${SSH_KEY_PATH:-~/.ssh/my-datascience-key.pem}}"
+: "${AMI_ID:=${GPU_AMI_ID:-ami-xxxxxxxx}}"
+: "${VOLUME_SIZE:=${DEFAULT_GPU_VOLUME_SIZE:-100}}"
+: "${AWS_REGION:=${AWS_DEFAULT_REGION:-us-west-2}}"
 
 # If AMI_ID is still placeholder, try to find latest
 if [[ "$AMI_ID" == *"ami-xxxxxxxx"* ]]; then
