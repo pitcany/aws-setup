@@ -18,4 +18,4 @@ aws ec2 describe-instances \
   --output table
 
 echo ""
-echo -e "Use scripts/gpu-spot.sh to launch GPU instances"
+echo -e "Use scripts/launch-gpu.sh to launch GPU instances"

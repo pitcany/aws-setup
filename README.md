@@ -85,10 +85,10 @@ A budget-friendly, reusable setup for AWS EC2 instances tailored for data scienc
 
 ```bash
 # Launch with default configuration
-./scripts/gpu-spot.sh
+./scripts/launch-gpu.sh
 
 # Launch with custom settings
-./scripts/gpu-spot.sh \
+./scripts/launch-gpu.sh \
   --instance-type g4dn.2xlarge \
   --volume-size 200 \
   --ami-id ami-01234567890abcdef0
@@ -118,7 +118,7 @@ aws ec2 terminate-instances --instance-ids <INSTANCE_ID>
 ```
 aws/
 ├── scripts/
-│   ├── gpu-spot.sh       # Launch GPU spot instances
+│   ├── launch-gpu.sh       # Launch GPU spot instances
 │   ├── list-instances.sh # List all EC2 instances
 │   └── lib.sh            # Shared library with common functions
 ├── docs/
@@ -178,13 +178,13 @@ Keep your AWS costs low by following these practices:
 
 ## Scripts Reference
 
-### `scripts/gpu-spot.sh`
+### `scripts/launch-gpu.sh`
 
 Launches a GPU spot instance with error handling and auto-detection of latest AMI.
 
 **Usage:**
 ```bash
-scripts/gpu-spot.sh [OPTIONS]
+scripts/launch-gpu.sh [OPTIONS]
 ```
 
 **Options:**
@@ -197,7 +197,7 @@ scripts/gpu-spot.sh [OPTIONS]
 
 **Example:**
 ```bash
-./scripts/gpu-spot.sh --instance-type g4dn.2xlarge --volume-size 200
+./scripts/launch-gpu.sh --instance-type g4dn.2xlarge --volume-size 200
 ```
 
 ### `scripts/list-instances.sh`
@@ -248,7 +248,7 @@ source scripts/lib.sh
 GPU spot capacity varies by availability zone. Try specifying a different AZ:
 
 ```bash
-./scripts/gpu-spot.sh --instance-type g4dn.xlarge
+./scripts/launch-gpu.sh --instance-type g4dn.xlarge
 # If "InsufficientInstanceCapacity" error, try:
 aws ec2 run-instances ... --placement AvailabilityZone=us-west-2b ...
 ```

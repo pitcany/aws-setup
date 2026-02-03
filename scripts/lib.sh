@@ -138,13 +138,25 @@ init_env() {
   check_aws_cli
 }
 
+get_ssh_user() {
+  local ami_id=$1
+  local ami_name
+  ami_name=$(aws ec2 describe-images --image-ids "$ami_id" --query 'Images[0].Name' --output text 2>/dev/null || echo "")
+
+  case "$ami_name" in
+    ubuntu*|Ubuntu*) echo "ubuntu" ;;
+    *Deep*Learning*Ubuntu*) echo "ubuntu" ;;
+    *)               echo "ec2-user" ;;
+  esac
+}
+
 # Set default values (used only if config doesn't set them)
 # These are applied after config loading so they don't override config values
 : "${AWS_DEFAULT_REGION:=us-west-2}"
 : "${SSH_KEY_PATH:=~/.ssh/my-datascience-key.pem}"
 : "${KEY_NAME:=my-datascience-key}"
 : "${SECURITY_GROUP_ID:=sg-xxxxxxxx}"
-: "${AL2023_AMI_ID:=ami-xxxxxxxx}"
+: "${CPU_AMI_ID:=ami-xxxxxxxx}"
 : "${GPU_AMI_ID:=ami-xxxxxxxx}"
 : "${DEFAULT_CPU_INSTANCE_TYPE:=t3.medium}"
 : "${DEFAULT_CPU_INSTANCE_TYPE:=t3.medium}"

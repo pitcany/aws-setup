@@ -54,7 +54,7 @@ check_ssh_key
 : "${INSTANCE_TYPE:=${DEFAULT_CPU_INSTANCE_TYPE:-t3.medium}}"
 : "${KEY_NAME:=${KEY_NAME:-my-datascience-key}}"
 : "${SSH_KEY_PATH:=${SSH_KEY_PATH:-~/.ssh/my-datascience-key.pem}}"
-: "${AMI_ID:=${AL2023_AMI_ID:-ami-xxxxxxxx}}"
+: "${AMI_ID:=${CPU_AMI_ID:-ami-xxxxxxxx}}"
 : "${VOLUME_SIZE:=${DEFAULT_CPU_VOLUME_SIZE:-20}}"
 : "${AWS_REGION:=${AWS_DEFAULT_REGION:-us-west-2}}"
 : "${CPU_INSTANCE_NAME:=${CPU_INSTANCE_NAME:-datascience-daily}}"
@@ -63,13 +63,17 @@ check_ssh_key
 # If AMI_ID is still placeholder, try to find latest
 if [[ "$AMI_ID" == *"ami-xxxxxxxx"* ]]; then
   echo -e "${YELLOW}WARNING: AMI ID not configured${NC}"
-  echo "Searching for latest Amazon Linux 2023 AMI..."
+  echo "Searching for latest Ubuntu 22.04 LTS AMI..."
 
-  LATEST_AMI=$(find_latest_ami "al2023-ami-2023*-x86_64")
-  AMI_ID=$(echo "$LATEST_AMI" | cut -f1)
+  AMI_ID=$(aws ec2 describe-images \
+    --owners 099720109477 \
+    --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*" \
+              "Name=state,Values=available" \
+    --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
+    --output text)
 
   if [[ "$AMI_ID" == "None" ]] || [[ -z "$AMI_ID" ]]; then
-    echo -e "${RED}ERROR: Could not find Amazon Linux 2023 AMI${NC}"
+    echo -e "${RED}ERROR: Could not find Ubuntu 22.04 LTS AMI${NC}"
     exit 1
   fi
 
@@ -141,8 +145,10 @@ echo "  Instance ID: $INSTANCE_ID"
 echo "  Public IP:   $IP"
 echo ""
 
+SSH_USER=$(get_ssh_user "$AMI_ID")
+
 echo -e "${GREEN}Connect with:${NC}"
-echo "  ssh -i $SSH_KEY_PATH ec2-user@$IP"
+echo "  ssh -i $SSH_KEY_PATH $SSH_USER@$IP"
 echo ""
 
 echo -e "${YELLOW}Manage instance:${NC}"
