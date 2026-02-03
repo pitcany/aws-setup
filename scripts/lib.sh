@@ -84,23 +84,23 @@ wait_for_instance_ip() {
   local max_attempts=${2:-24}  # Default: 24 attempts
   local sleep_time=${3:-5}     # Default: 5 seconds
 
-  echo -n "Waiting for public IP"
+  echo -n "Waiting for public IP" >&2
 
   for ((i=1; i<=max_attempts; i++)); do
     local ip=$(get_instance_ip "$instance_id")
 
     if [ "$ip" != "None" ] && [ -n "$ip" ]; then
-      echo " ✓"
+      echo " ✓" >&2
       echo "$ip"
       return 0
     fi
 
-    echo -n "."
+    echo -n "." >&2
     sleep "$sleep_time"
   done
 
-  echo ""
-  echo -e "${RED}ERROR: Timeout waiting for instance IP${NC}"
+  echo "" >&2
+  echo -e "${RED}ERROR: Timeout waiting for instance IP${NC}" >&2
   return 1
 }
 
