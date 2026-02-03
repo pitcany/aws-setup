@@ -65,6 +65,22 @@ A budget-friendly, reusable setup for AWS EC2 instances tailored for data scienc
 
 ## Usage
 
+### Launch CPU Instance
+
+```bash
+# Launch on-demand CPU instance (default: t3.medium)
+./scripts/launch-cpu.sh
+
+# Launch CPU spot instance (~20-70% savings)
+./scripts/launch-cpu.sh --spot
+
+# Launch with custom settings
+./scripts/launch-cpu.sh \
+  --instance-type t3.large \
+  --volume-size 50 \
+  --ami-id ami-01234567890abcdef0
+```
+
 ### Launch GPU Spot Instance
 
 ```bash
