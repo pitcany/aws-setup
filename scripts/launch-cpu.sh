@@ -88,11 +88,9 @@ echo "  Volume size: ${VOLUME_SIZE}GB"
 if [[ "$USE_SPOT" == "true" ]]; then
   echo "  Market: Spot instance (~20-70% savings)"
   SPOT_OPTIONS="--instance-market-options '{\"MarketType\":\"spot\",\"SpotOptions\":{\"SpotInstanceType\":\"one-time\"}}'"
-  SPOT_TAG="CPU spot"
 else
   echo "  Market: On-demand instance"
   SPOT_OPTIONS=""
-  SPOT_TAG="CPU on-demand"
 fi
 
 echo ""
@@ -106,7 +104,7 @@ if [[ "$USE_SPOT" == "true" ]]; then
     --key-name "$KEY_NAME" \
     --security-group-ids "$SECURITY_GROUP_ID" \
     --block-device-mappings "[{\"DeviceName\":\"/dev/xvda\",\"Ebs\":{\"VolumeSize\":$VOLUME_SIZE,\"VolumeType\":\"gp3\"}}]" \
-    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$CPU_INSTANCE_NAME-$SPOT_TAG}]" \
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$CPU_INSTANCE_NAME}]" \
     --query "Instances[0].InstanceId" \
     --output text)
 else
@@ -116,7 +114,7 @@ else
     --key-name "$KEY_NAME" \
     --security-group-ids "$SECURITY_GROUP_ID" \
     --block-device-mappings "[{\"DeviceName\":\"/dev/xvda\",\"Ebs\":{\"VolumeSize\":$VOLUME_SIZE,\"VolumeType\":\"gp3\"}}]" \
-    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$CPU_INSTANCE_NAME-$SPOT_TAG}]" \
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$CPU_INSTANCE_NAME}]" \
     --query "Instances[0].InstanceId" \
     --output text)
 fi
