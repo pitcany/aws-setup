@@ -197,7 +197,7 @@ printf '\n'
 printf '%b[5/6] Security Group%b\n' "$BOLD" "$NC"
 
 if [[ -f "$config_file" ]]; then
-  sg_id="$(grep 'group_id:' "$config_file" 2>/dev/null | head -1 | sed 's/.*group_id:[[:space:]]*//' | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs)"
+  sg_id="$(_bs_yaml_get "$config_file" "group_id")"
 fi
 
 : "${sg_id:=}"
