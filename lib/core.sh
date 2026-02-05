@@ -367,16 +367,11 @@ resolve_ami() {
 
   info "Auto-detecting AMI: ${pattern}..."
 
-  local owner_flag
-  if [[ "$owner" == "amazon" ]]; then
-    owner_flag="--owners amazon"
-  else
-    owner_flag="--owners $owner"
-  fi
+  local owner_args=(--owners "$owner")
 
   local ami
   ami="$(aws_cmd ec2 describe-images \
-    $owner_flag \
+    "${owner_args[@]}" \
     --filters "Name=name,Values=${pattern}" "Name=state,Values=available" \
     --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
     --output text 2>/dev/null || echo "None")"
