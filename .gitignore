@@ -7,6 +7,10 @@
 .env.local
 .env.*.local
 config.env
+config/.env
+
+# EC2 Ops Kit config (contains secrets)
+config.yaml
 
 # Logs
 *.log
@@ -27,3 +31,9 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

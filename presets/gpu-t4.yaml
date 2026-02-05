@@ -1,0 +1,30 @@
+# gpu-t4: NVIDIA T4 GPU (16 GB VRAM) — inference, light training
+name: gpu-t4
+description: "NVIDIA T4 GPU instance (16 GB VRAM) for inference and light training"
+
+instance_type: g4dn.xlarge
+# Deep Learning Base OSS Nvidia Driver AMI (Ubuntu 22.04)
+ami_pattern: "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*"
+ami_owner: amazon
+ami_id: ""
+
+volume_size: 100
+root_device: /dev/sda1
+ssh_user: ubuntu
+spot_friendly: true
+
+cost_per_hour: 0.526
+
+# Post-launch: validate GPU with nvidia-smi
+post_launch_hint: "Run: nvidia-smi  (drivers pre-installed on Deep Learning AMI)"
+
+# User-data script for GPU driver setup on plain Ubuntu (not needed for DL AMI)
+gpu_setup_userdata: |
+  #!/bin/bash
+  set -e
+  apt-get update -y
+  apt-get install -y linux-headers-$(uname -r)
+  # Install NVIDIA drivers from Ubuntu repos
+  apt-get install -y nvidia-driver-535 nvidia-utils-535
+  # Verify
+  nvidia-smi
