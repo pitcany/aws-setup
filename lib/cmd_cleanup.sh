@@ -29,6 +29,7 @@ cmd_cleanup() {
   printf '  %b[1/4] Elastic IPs not associated with any instance%b\n' "$BOLD" "$NC"
   local orphan_eips
   orphan_eips="$(aws_cmd ec2 describe-addresses \
+    --filters "Name=tag:Project,Values=${CFG_TAG_PROJECT}" \
     --query 'Addresses[?AssociationId==null].[AllocationId, PublicIp, (Tags[?Key==`Name`].Value)[0]]' \
     --output text 2>/dev/null || echo "")"
 
@@ -63,6 +64,7 @@ cmd_cleanup() {
   local orphan_vols
   orphan_vols="$(aws_cmd ec2 describe-volumes \
     --filters "Name=status,Values=available" \
+              "Name=tag:Project,Values=${CFG_TAG_PROJECT}" \
     --query 'Volumes[].[VolumeId, Size, VolumeType, CreateTime, (Tags[?Key==`Name`].Value)[0]]' \
     --output text 2>/dev/null || echo "")"
 
