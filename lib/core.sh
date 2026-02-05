@@ -490,17 +490,20 @@ estimate_cost() {
 # Convert an ISO-8601 timestamp (e.g. 2024-06-15T10:30:00Z) to epoch seconds.
 # Works on macOS (BSD date) and Linux (GNU date).  Returns "" on failure.
 parse_iso_date() {
+parse_iso_date() {
   local ts="$1"
-  # Strip fractional seconds and trailing Z for consistent parsing
-  ts="${ts%%.*}"        # 2024-06-15T10:30:00.123Z → 2024-06-15T10:30:00
-  ts="${ts%Z}"          # 2024-06-15T10:30:00Z     → 2024-06-15T10:30:00
+  ts="${ts%%.*}"
+  ts="${ts%Z}"
 
-  # GNU coreutils date (Linux)
+  # GNU date (Linux)
   date -u -d "${ts}" +%s 2>/dev/null && return 0
   # BSD date (macOS)
   date -u -j -f '%Y-%m-%dT%H:%M:%S' "${ts}" +%s 2>/dev/null && return 0
-  # Python fallback (most portable)
-  python3 -c "from datetime import datetime; print(int(datetime.strptime('${ts}','%Y-%m-%dT%H:%M:%S').strftime('%s')))" 2>/dev/null && return 0
+  # Python fallback
+  python3 -c "from datetime import datetime; print(int(datetime.strptime('${ts}','%Y-%m-%dT%H:%M:%S').timestamp()))" 2>/dev/null && return 0
+
+  return 1
+}
 
   # All methods failed
   return 1
