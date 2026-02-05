@@ -141,7 +141,7 @@ load_config() {
   CFG_SSH_BASTION_USER="$(_cfg_get ssh_bastion_user "")"
   CFG_SSH_BASTION_KEY_PATH="$(_cfg_get ssh_bastion_key_path "")"
   CFG_SECURITY_GROUP_ID="$(_cfg_get security_group_id "")"
-  CFG_SUBNET_ID="$(_cfg_get security_subnet_id "")"
+  CFG_SUBNET_ID="$(_cfg_get subnet_id "")"
   CFG_TAG_PROJECT="$(_cfg_get tags_Project "aws-setup")"
   CFG_TAG_OWNER="$(_cfg_get tags_Owner "me")"
   CFG_TAG_COST_CENTER="$(_cfg_get tags_CostCenter "")"
@@ -367,16 +367,15 @@ resolve_ami() {
 
   info "Auto-detecting AMI: ${pattern}..."
 
-  local owner_flag
-  if [[ "$owner" == "amazon" ]]; then
-    owner_flag="--owners amazon"
-  else
-    owner_flag="--owners $owner"
-  fi
+  local owner_args=(--owners)
+  IFS=',' read -ra owner_list <<< "$owner"
+  for o in "${owner_list[@]}"; do
+    owner_args+=("$o")
+  done
 
   local ami
   ami="$(aws_cmd ec2 describe-images \
-    $owner_flag \
+    "${owner_args[@]}" \
     --filters "Name=name,Values=${pattern}" "Name=state,Values=available" \
     --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
     --output text 2>/dev/null || echo "None")"
