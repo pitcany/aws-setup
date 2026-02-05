@@ -278,6 +278,10 @@ $(list_presets)"
     die "User-data file not found: $user_data"
   fi
 
+  if [[ -n "$ttl" && ! "$ttl" =~ ^[0-9]+$ ]]; then
+    die "Invalid TTL hours: $ttl (must be a non-negative integer)"
+  fi
+
   # Build tag spec
   local tag_spec
   tag_spec="$(build_tag_spec "$inst_name" "$ttl" "instance")"
