@@ -215,25 +215,32 @@ $(list_presets)"
   # Resolve AMI
   ami_id="$(resolve_ami "$ami_id" "$PRESET_AMI_PATTERN" "$PRESET_AMI_OWNER")"
 
-  # Check for idempotency: does an instance with this name already exist and is running/stopped?
+  # Check for idempotency: does an instance with this name already exist?
   local existing
   existing="$(resolve_instance "$inst_name")"
   if [[ -n "$existing" ]]; then
     local ex_id ex_name ex_state
     IFS=$'\t' read -r ex_id ex_name ex_state _ _ _ <<< "$(printf '%s\n' "$existing" | head -1)"
-    if [[ "$ex_state" == "running" || "$ex_state" == "stopped" ]]; then
-      warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
-      if [[ "$ex_state" == "stopped" ]]; then
+    case "$ex_state" in
+      running)
+        warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
+        info "Instance is already running."
+        return 0
+        ;;
+      stopped)
+        warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
         if confirm "Start the existing instance instead?"; then
           cmd_start "$ex_id"
           return $?
         fi
-      else
-        info "Instance is already running."
+        return 1
+        ;;
+      pending|stopping)
+        warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
+        info "Instance is currently $ex_state. Try again later."
         return 0
-      fi
-      return 1
-    fi
+        ;;
+    esac
   fi
 
   # Spot handling
@@ -254,6 +261,10 @@ $(list_presets)"
   # SSH key
   if [[ -z "$CFG_SSH_KEY_NAME" ]]; then
     die "SSH key name not configured. Set ssh.key_name in config.yaml"
+  fi
+
+  if [[ -n "$user_data" && ! -f "$user_data" ]]; then
+    die "User-data file not found: $user_data"
   fi
 
   # Build tag spec
@@ -298,7 +309,7 @@ $(list_presets)"
     run_args+=("${spot_args[@]}")
   fi
 
-  if [[ -n "$user_data" && -f "$user_data" ]]; then
+  if [[ -n "$user_data" ]]; then
     run_args+=(--user-data "file://$user_data")
   fi
 
