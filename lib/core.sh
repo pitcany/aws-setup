@@ -367,7 +367,11 @@ resolve_ami() {
 
   info "Auto-detecting AMI: ${pattern}..."
 
-  local owner_args=(--owners "$owner")
+  local owner_args=(--owners)
+  IFS=',' read -ra owner_list <<< "$owner"
+  for o in "${owner_list[@]}"; do
+    owner_args+=("$o")
+  done
 
   local ami
   ami="$(aws_cmd ec2 describe-images \
