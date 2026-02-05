@@ -43,14 +43,14 @@ cmd_cleanup() {
     warn "  $eip_count unassociated EIP(s) found (~\$3.60/month each)"
 
     if [[ "$do_release" == "true" ]]; then
-      printf '%s\n' "$orphan_eips" | while IFS=$'\t' read -r alloc ip name; do
+      while IFS=$'\t' read -r alloc ip name <&3; do
         if confirm "    Release $alloc ($ip)?"; then
           if dry_run_guard "aws ec2 release-address --allocation-id $alloc"; then
             aws_cmd ec2 release-address --allocation-id "$alloc" 2>/dev/null
             log "    Released $alloc"
           fi
         fi
-      done
+      done 3< <(printf '%s\n' "$orphan_eips")
     else
       info "  Run with --release-eips to release them"
     fi
@@ -79,14 +79,14 @@ cmd_cleanup() {
     warn "  $vol_count unattached volume(s) found"
 
     if [[ "$do_delete_vols" == "true" ]]; then
-      printf '%s\n' "$orphan_vols" | while IFS=$'\t' read -r vid size vtype created name; do
+      while IFS=$'\t' read -r vid size vtype created name <&3; do
         if confirm "    Delete $vid (${size}GB)?"; then
           if dry_run_guard "aws ec2 delete-volume --volume-id $vid"; then
             aws_cmd ec2 delete-volume --volume-id "$vid" 2>/dev/null
             log "    Deleted $vid"
           fi
         fi
-      done
+      done 3< <(printf '%s\n' "$orphan_vols")
     else
       info "  Run with --delete-volumes to delete them"
     fi
@@ -136,14 +136,14 @@ cmd_cleanup() {
     done
 
     if [[ "$do_terminate" == "true" ]]; then
-      printf '%b' "$old_stopped" | while IFS=$'\t' read -r id name itype days; do
+      while IFS=$'\t' read -r id name itype days <&3; do
         if confirm "    Terminate $id ($name)?"; then
           if dry_run_guard "aws ec2 terminate-instances --instance-ids $id"; then
             aws_cmd ec2 terminate-instances --instance-ids "$id" >/dev/null
             log "    Terminated $id"
           fi
         fi
-      done
+      done 3< <(printf '%b' "$old_stopped")
     else
       info "  Run with --terminate to terminate them"
     fi
@@ -204,14 +204,14 @@ cmd_cleanup() {
     done
 
     if [[ "$do_terminate" == "true" ]]; then
-      printf '%b' "$ttl_expired" | while IFS=$'\t' read -r id name state itype ttl; do
+      while IFS=$'\t' read -r id name state itype ttl <&3; do
         if confirm "    Terminate $id ($name, TTL=$ttl)?"; then
           if dry_run_guard "aws ec2 terminate-instances --instance-ids $id"; then
             aws_cmd ec2 terminate-instances --instance-ids "$id" >/dev/null
             log "    Terminated $id"
           fi
         fi
-      done
+      done 3< <(printf '%b' "$ttl_expired")
     else
       info "  Run with --terminate to terminate expired instances"
     fi
