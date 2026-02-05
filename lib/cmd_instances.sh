@@ -222,8 +222,9 @@ $(list_presets)"
   ami_id="$(resolve_ami "$ami_id" "$PRESET_AMI_PATTERN" "$PRESET_AMI_OWNER")"
 
   # Check for idempotency: does an instance with this name already exist?
+  # Include terminated/shutting-down via --all so we don't silently duplicate
   local existing
-  existing="$(resolve_instance "$inst_name")"
+  existing="$(resolve_instance "$inst_name" "--all")"
   if [[ -n "$existing" ]]; then
     local ex_id ex_name ex_state
     IFS=$'\t' read -r ex_id ex_name ex_state _ _ _ <<< "$(printf '%s\n' "$existing" | head -1)"
@@ -241,10 +242,14 @@ $(list_presets)"
         fi
         return 1
         ;;
-      pending|stopping)
+      pending|stopping|shutting-down)
         warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
-        info "Instance is currently $ex_state. Try again later."
-        return 0
+        info "Instance is currently $ex_state. Wait for it to settle before retrying."
+        return 1
+        ;;
+      terminated)
+        # Terminated instances are gone — safe to reuse the name
+        debug "Found terminated instance $ex_id with same name; proceeding with new launch"
         ;;
     esac
   fi
@@ -296,6 +301,12 @@ $(list_presets)"
     return 0
   fi
 
+  # Build block device mapping as a standalone JSON string to avoid
+  # fragile nested escaping inside the bash array.
+  local bdm
+  printf -v bdm '[{"DeviceName":"%s","Ebs":{"VolumeSize":%s,"VolumeType":"%s"}}]' \
+    "$PRESET_ROOT_DEVICE" "$vol_size" "$CFG_DEFAULT_VOLUME_TYPE"
+
   # Build run-instances command
   local run_args=(
     ec2 run-instances
@@ -303,7 +314,7 @@ $(list_presets)"
     --image-id "$ami_id"
     --key-name "$CFG_SSH_KEY_NAME"
     --security-group-ids "$CFG_SECURITY_GROUP_ID"
-    --block-device-mappings "[{\"DeviceName\":\"${PRESET_ROOT_DEVICE}\",\"Ebs\":{\"VolumeSize\":${vol_size},\"VolumeType\":\"${CFG_DEFAULT_VOLUME_TYPE}\"}}]"
+    --block-device-mappings "$bdm"
     --tag-specifications "$tag_spec" "$vol_tag_spec"
   )
 
