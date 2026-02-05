@@ -300,7 +300,7 @@ resolve_instance() {
   fi
 
   if [[ "$include_all" != "--all" ]]; then
-    filters+=("Name=instance-state-name,Values=pending,running,stopping,stopped")
+    filters+=("Name=instance-state-name,Values=pending,running,stopping,stopped,shutting-down")
   fi
 
   aws_cmd ec2 describe-instances \
