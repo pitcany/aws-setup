@@ -93,6 +93,7 @@ HELP
 
 # ── Parse global options (before command) ─────────────────────────────
 while [[ $# -gt 0 ]]; do
+  # shellcheck disable=SC2034  # EC2_PROFILE used by sourced libs
   case "$1" in
     --profile)  EC2_PROFILE="$2"; shift 2 ;;
     --region)   EC2_REGION="$2"; shift 2 ;;

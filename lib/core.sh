@@ -109,6 +109,7 @@ parse_yaml() {
 }
 
 # ── Config loading ────────────────────────────────────────────────────
+# shellcheck disable=SC2034  # CFG_* variables used by sourced command modules
 load_config() {
   local config_file="${EC2_CONFIG_FILE:-}"
   if [[ -z "$config_file" ]]; then
@@ -167,6 +168,7 @@ _apply_defaults() {
 }
 
 # ── Preset loading ────────────────────────────────────────────────────
+# shellcheck disable=SC2034  # PRESET_* variables used by sourced command modules
 load_preset() {
   local preset_name="$1"
   local preset_file="${EC2_ROOT}/presets/${preset_name}.yaml"

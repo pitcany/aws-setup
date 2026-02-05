@@ -9,6 +9,7 @@ cmd_cleanup() {
   local do_terminate=false
 
   while [[ $# -gt 0 ]]; do
+    # shellcheck disable=SC2034  # EC2_DRY_RUN used by dry_run_guard
     case "$1" in
       --days)
         if [[ -z "${2:-}" || ! "$2" =~ ^[0-9]+$ ]]; then
