@@ -10,12 +10,19 @@ cmd_cleanup() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --days)           max_stopped_days="$2"; shift 2 ;;
+      --days)
+        if [[ -z "${2:-}" || ! "$2" =~ ^[0-9]+$ ]]; then
+          die "Invalid value for --days: ${2:-<empty>} (expected integer)"
+        fi
+        max_stopped_days="$2"
+        shift 2
+        ;;
       --release-eips)   do_release=true; shift ;;
       --delete-volumes) do_delete_vols=true; shift ;;
       --terminate)      do_terminate=true; shift ;;
+      --dry-run)        EC2_DRY_RUN="true"; shift ;;
       -h|--help)        _cleanup_help; return 0 ;;
-      *)                shift ;;
+      *)                warn "Unknown option: $1"; shift ;;
     esac
   done
 
