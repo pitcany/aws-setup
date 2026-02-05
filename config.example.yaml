@@ -1,0 +1,47 @@
+# EC2 Ops Kit Configuration
+# Copy to config.yaml and customize: cp config.example.yaml config.yaml
+# config.yaml is gitignored — your secrets stay local.
+
+aws:
+  profile: default
+  region: us-west-2
+
+ssh:
+  key_path: ~/.ssh/my-ec2-key.pem
+  key_name: my-ec2-key
+  default_user: ubuntu
+  # Bastion / ProxyJump (leave empty to disable)
+  bastion_host: ""
+  bastion_user: ""
+  bastion_key_path: ""
+
+security:
+  group_id: sg-REPLACE_ME
+  # Subnet ID (optional — leave empty for default VPC)
+  subnet_id: ""
+
+tags:
+  Project: aws-setup
+  Owner: me
+  CostCenter: ""
+
+defaults:
+  ttl_hours: 0
+  volume_type: gp3
+  # Leave blank to auto-detect latest Ubuntu 22.04 LTS
+  cpu_ami_id: ""
+  # Leave blank to auto-detect latest Deep Learning AMI
+  gpu_ami_id: ""
+
+# Optional: cost hint rates ($/hr) for rough estimates
+costs:
+  t3_micro: 0.0104
+  t3_small: 0.0208
+  t3_medium: 0.0416
+  t3_large: 0.0832
+  c5_xlarge: 0.17
+  c5_2xlarge: 0.34
+  g4dn_xlarge: 0.526
+  g5_xlarge: 1.006
+  g5_2xlarge: 1.212
+  p3_2xlarge: 3.06

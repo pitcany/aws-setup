@@ -1,332 +1,348 @@
-# AWS EC2 Data Science Environment
+# EC2 Ops Kit
 
-A budget-friendly, reusable setup for AWS EC2 instances tailored for data science work. This toolkit provides scripts and documentation to launch and manage CPU and GPU instances efficiently.
+Fast, safe one-liner management for AWS EC2 instances — CPU and GPU.
 
-## Features
-
-- **Cost-effective setup**: t3.medium for daily work (~$0.04/hr), GPU spot instances for training (~$0.24/hr)
-- **Reusable scripts**: Shell scripts with configuration management and error handling
-- **GPU spot instances**: On-demand GPU access with up to 70% cost savings
-- **S3 integration**: Seamless data transfer between instances
-- **Pre-configured**: Python 3.11, R 4.3.2, Jupyter, and popular data science packages
+```
+ec2 up --preset gpu-t4 --name training --spot --ttl-hours 8
+ec2 ssh training
+ec2 stop training
+ec2 cleanup
+```
 
 ## Quick Start
 
-### Prerequisites
-
-- AWS account with billing enabled
-- AWS CLI installed and configured
-- IAM permissions for EC2, S3, and Service Quotas
-- Terminal with SSH client
-
-### Setup
-
-1. **Clone this repository**
-   ```bash
-   git clone <repository-url>
-   cd aws
-   ```
-
-2. **Configure your environment**
-   ```bash
-   # Copy example config file
-   cp config/.env.example config/.env
-
-   # Edit with your values
-   nano config/.env
-   ```
-
-3. **Create SSH key pair** (if you don't have one)
-   ```bash
-   aws ec2 create-key-pair \
-     --key-name my-datascience-key \
-     --query 'KeyMaterial' \
-     --output text > ~/.ssh/my-datascience-key.pem
-   chmod 400 ~/.ssh/my-datascience-key.pem
-   ```
-
-4. **Create security group** (if you don't have one)
-   ```bash
-   SG_ID=$(aws ec2 create-security-group \
-     --group-name datascience-sg \
-     --description "Security group for data science EC2 instances" \
-     --query 'GroupId' \
-     --output text)
-
-   # Allow SSH access
-   aws ec2 authorize-security-group-ingress \
-     --group-id $SG_ID \
-     --protocol tcp \
-     --port 22 \
-     --cidr 0.0.0.0/0
-   ```
-
-5. **Update config/.env** with your security group ID and key name
-
-## Usage
-
-### Launch CPU Instance
-
 ```bash
-# Launch on-demand CPU instance (default: t3.medium)
-./scripts/launch-cpu.sh
+# 1. Clone and bootstrap
+cd aws-setup
+./bootstrap.sh              # checks deps, guides setup
 
-# Launch CPU spot instance (~20-70% savings)
-./scripts/launch-cpu.sh --spot
+# 2. Configure
+cp config.example.yaml config.yaml
+# Edit config.yaml with your AWS settings (key, security group, region)
 
-# Launch with custom settings
-./scripts/launch-cpu.sh \
-  --instance-type t3.large \
-  --volume-size 50 \
-  --ami-id ami-01234567890abcdef0
+# 3. Use
+./bin/ec2 list              # list your instances
+./bin/ec2 presets            # show available presets
+./bin/ec2 up --preset cpu-small --name dev-box
+./bin/ec2 ssh dev-box
 ```
 
-### Launch GPU Spot Instance
+### Add to PATH (optional)
 
 ```bash
-# Launch with default configuration
-./scripts/launch-gpu.sh
+# Add to your shell profile:
+export PATH="$PATH:/path/to/aws-setup/bin"
 
-# Launch with custom settings
-./scripts/launch-gpu.sh \
-  --instance-type g4dn.2xlarge \
-  --volume-size 200 \
-  --ami-id ami-01234567890abcdef0
+# Then use anywhere:
+ec2 list
+ec2 ssh dev-box
 ```
 
-### List All Instances
+## Commands
 
-```bash
-./scripts/list-instances.sh
+| Command | Description |
+|---------|-------------|
+| `ec2 list` | List instances (Name, ID, state, type, IPs, AZ, launch time) |
+| `ec2 info <name\|id>` | Detailed info about one instance (tags, volumes, cost hint) |
+| `ec2 up` | Create instance from preset |
+| `ec2 start <name\|id>` | Start a stopped instance |
+| `ec2 stop <name\|id>` | Stop a running instance |
+| `ec2 terminate <name\|id>` | Terminate an instance (requires confirmation) |
+| `ec2 ssh <name\|id>` | SSH into an instance by name |
+| `ec2 eip <action>` | Manage Elastic IPs (list/alloc/assoc/disassoc/release) |
+| `ec2 spot <action>` | Spot management (list/prices/history/cancel/interruption) |
+| `ec2 cleanup` | Scan for orphaned EIPs, volumes, expired instances |
+| `ec2 presets` | List available instance presets |
+
+### Global Options
+
+```
+--profile PROF    AWS profile (overrides config)
+--region REG      AWS region (overrides config)
+--dry-run         Preview destructive operations without executing
+--yes, -y         Skip confirmation prompts
+--config FILE     Path to config.yaml
+--debug           Verbose debug output
 ```
 
-### Manage Instances
+## Cheatsheet
 
 ```bash
-# Stop an instance
-aws ec2 stop-instances --instance-ids <INSTANCE_ID>
+# ── List & Info ─────────────────────────────────────────────
+ec2 list                                # all instances
+ec2 list --state running                # running only
+ec2 list --tag gpu                      # filter by name
+ec2 info my-instance                    # detailed info + cost hint
 
-# Start an instance
-aws ec2 start-instances --instance-ids <INSTANCE_ID>
+# ── Create Instances ────────────────────────────────────────
+ec2 up --preset cpu-small --name dev    # small CPU box
+ec2 up --preset cpu-large --name batch  # big CPU box
+ec2 up --preset gpu-t4 --name train --spot            # T4 GPU spot
+ec2 up --preset gpu-a10 --name finetune --spot --ttl-hours 12  # A10G + TTL
+ec2 up --preset cpu-small --name dev --volume 50      # extra 50GB volume
 
-# Terminate an instance (permanently delete)
-aws ec2 terminate-instances --instance-ids <INSTANCE_ID>
+# ── Start / Stop / Terminate ───────────────────────────────
+ec2 start dev                           # start stopped instance
+ec2 stop dev                            # stop (preserves EBS)
+ec2 terminate dev                       # destroy (requires confirmation)
+ec2 --dry-run terminate dev             # preview without executing
+ec2 --yes stop dev                      # skip confirmation
+
+# ── SSH ─────────────────────────────────────────────────────
+ec2 ssh dev                             # SSH into instance
+ec2 ssh dev --print                     # print ssh command only
+ec2 ssh dev -L 8888:localhost:8888      # port forward Jupyter
+ec2 ssh --gen-config                    # generate ~/.ssh/config snippet
+
+# ── Elastic IPs ─────────────────────────────────────────────
+ec2 eip list                            # list all EIPs
+ec2 eip alloc my-static-ip              # allocate new EIP
+ec2 eip assoc eipalloc-abc123 dev       # associate with instance
+ec2 eip disassoc eipassoc-abc123        # disassociate
+ec2 eip release eipalloc-abc123         # release (delete)
+
+# ── Spot Instances ──────────────────────────────────────────
+ec2 spot list                           # list spot requests
+ec2 spot prices                         # current spot prices
+ec2 spot prices g4dn.xlarge g5.xlarge   # specific types
+ec2 spot history g4dn.xlarge 48         # 48h price history
+ec2 spot cancel sir-abc12345            # cancel spot request
+ec2 spot interruption                   # handling guide
+
+# ── Cleanup ─────────────────────────────────────────────────
+ec2 cleanup                             # scan for orphans
+ec2 cleanup --days 3                    # flag stopped > 3 days
+ec2 cleanup --release-eips              # offer to release orphan EIPs
+ec2 cleanup --delete-volumes            # offer to delete unattached vols
+ec2 cleanup --terminate                 # offer to terminate expired
+
+# ── Multi-profile / Multi-region ────────────────────────────
+ec2 --profile work list                 # use 'work' AWS profile
+ec2 --region eu-west-1 list             # override region
+ec2 --profile prod --region us-east-1 cleanup
+```
+
+## Presets
+
+Presets are YAML files in `presets/`. Each defines an instance type, AMI, volume size, and more.
+
+| Preset | Type | vCPU | RAM | GPU | Volume | Spot | Cost/hr |
+|--------|------|------|-----|-----|--------|------|---------|
+| `cpu-small` | t3.medium | 2 | 4 GB | — | 20 GB | Yes | ~$0.04 |
+| `cpu-large` | c5.2xlarge | 8 | 16 GB | — | 100 GB | Yes | ~$0.34 |
+| `gpu-t4` | g4dn.xlarge | 4 | 16 GB | T4 16GB | 100 GB | Yes | ~$0.53 |
+| `gpu-a10` | g5.xlarge | 4 | 16 GB | A10G 24GB | 200 GB | Yes | ~$1.01 |
+
+### Custom Presets
+
+Create `presets/my-preset.yaml`:
+
+```yaml
+name: my-preset
+description: "My custom instance"
+instance_type: m5.xlarge
+ami_pattern: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+ami_owner: "099720109477"
+ami_id: ""
+volume_size: 50
+root_device: /dev/sda1
+ssh_user: ubuntu
+spot_friendly: true
+cost_per_hour: 0.192
+```
+
+## Configuration
+
+Copy `config.example.yaml` to `config.yaml` and edit:
+
+```yaml
+aws:
+  profile: default
+  region: us-west-2
+
+ssh:
+  key_path: ~/.ssh/my-ec2-key.pem
+  key_name: my-ec2-key
+  default_user: ubuntu
+  bastion_host: ""          # ProxyJump support
+  bastion_user: ""
+
+security:
+  group_id: sg-xxxxxxxx
+
+tags:
+  Project: aws-setup
+  Owner: me
+  CostCenter: ""
+
+defaults:
+  ttl_hours: 0
+  volume_type: gp3
+```
+
+## Safety
+
+- **Terminate** requires typing the instance name or ID to confirm
+- **Stop** requires `[y/N]` confirmation
+- `--dry-run` previews any destructive operation without executing
+- Every command prints the active AWS profile and region
+- All resources are tagged with `Project`, `Owner`, `ManagedBy`
+- TTL tags enable automatic detection of expired instances via `cleanup`
+
+## GPU Notes
+
+### AMIs
+
+The GPU presets use the **Deep Learning Base OSS Nvidia Driver AMI (Ubuntu 22.04)** which comes with NVIDIA drivers pre-installed. After launching:
+
+```bash
+ec2 ssh my-gpu-box
+nvidia-smi                  # should show your GPU
+```
+
+### Alternative AMIs
+
+- **Deep Learning AMI (Ubuntu)**: Includes PyTorch, TensorFlow, etc.
+- **Plain Ubuntu 22.04**: Use the `gpu_setup_userdata` field in presets to install NVIDIA drivers
+
+### Driver Setup on Plain Ubuntu
+
+If using a plain Ubuntu AMI, the preset includes a user-data script:
+
+```bash
+ec2 up --preset gpu-t4 --name my-gpu \
+  --ami ami-0abcdef1234567890 \
+  --user-data presets/gpu-setup.sh
 ```
 
 ## Project Structure
 
 ```
-aws/
-├── scripts/
-│   ├── launch-gpu.sh       # Launch GPU spot instances
-│   ├── list-instances.sh # List all EC2 instances
-│   └── lib.sh            # Shared library with common functions
-├── docs/
-│   └── setup-guide.md     # Complete setup documentation
+aws-setup/
+├── bin/
+│   └── ec2                     # Main CLI entrypoint
+├── lib/
+│   ├── core.sh                 # Shared utilities, config, YAML parsing
+│   ├── cmd_instances.sh        # list, info, up, start, stop, terminate
+│   ├── cmd_network.sh          # ssh, eip
+│   ├── cmd_spot.sh             # spot management
+│   └── cmd_cleanup.sh          # orphan scanner
+├── presets/
+│   ├── cpu-small.yaml          # t3.medium
+│   ├── cpu-large.yaml          # c5.2xlarge
+│   ├── gpu-t4.yaml             # g4dn.xlarge (NVIDIA T4)
+│   └── gpu-a10.yaml            # g5.xlarge (NVIDIA A10G)
+├── scripts/                    # Legacy scripts (preserved)
+│   ├── lib.sh
+│   ├── launch-cpu.sh
+│   ├── launch-gpu.sh
+│   └── ...
+├── tests/
+│   ├── run_tests.sh            # Test runner
+│   ├── test_cli.sh             # CLI parsing tests
+│   ├── test_config.sh          # Config parsing tests
+│   └── test_presets.sh         # Preset loading tests
 ├── config/
-│   └── .env.example      # Example configuration file
-├── personal/
-│   └── aws-ec2-datascience-setup.md  # Personal reference (not in git)
-├── .gitignore           # Excludes secrets and system files
-└── README.md            # This file
+│   └── .env.example            # Legacy config template
+├── docs/
+│   └── setup-guide.md          # Detailed setup guide
+├── config.example.yaml         # New config template
+├── bootstrap.sh                # Dependency checker + setup wizard
+├── README.md                   # This file
+├── LICENSE                     # MIT
+└── .gitignore
 ```
 
-## Configuration
+## Dependencies
 
-The scripts read configuration from `config/.env` (if it exists). Create this file from the example:
+**Required:**
+- AWS CLI v2
+- jq
+- bash 4+
+
+**Optional:**
+- Python 3 + boto3 (richer output)
+- shellcheck (lint checks in tests)
+
+## IAM Permissions
+
+Least-privilege permissions needed:
+
+```
+ec2:DescribeInstances           ec2:RunInstances
+ec2:StartInstances              ec2:StopInstances
+ec2:TerminateInstances          ec2:CreateTags
+ec2:DescribeImages              ec2:DescribeAddresses
+ec2:AllocateAddress             ec2:AssociateAddress
+ec2:DisassociateAddress         ec2:ReleaseAddress
+ec2:DescribeVolumes             ec2:CreateVolume
+ec2:AttachVolume                ec2:DeleteVolume
+ec2:DescribeSpotInstanceRequests
+ec2:DescribeSpotPriceHistory
+ec2:CancelSpotInstanceRequests
+ec2:DescribeSecurityGroups
+sts:GetCallerIdentity
+```
+
+## Testing
 
 ```bash
-cp config/.env.example config/.env
+./tests/run_tests.sh
 ```
 
-Required settings in `.env`:
-- `KEY_NAME`: Your AWS key pair name
-- `SECURITY_GROUP_ID`: Your security group ID
-- `SSH_KEY_PATH`: Path to your private SSH key
+Runs:
+- **Lint**: shellcheck on all scripts
+- **Config parsing**: YAML parser unit tests
+- **Preset loading**: Validates all preset files
+- **CLI parsing**: Command routing, flag parsing, utilities
 
-Optional settings:
-- `AWS_DEFAULT_REGION`: AWS region (default: us-west-2)
-- `GPU_AMI_ID`: Deep Learning AMI ID (auto-detected if not set)
-- `DEFAULT_GPU_INSTANCE_TYPE`: Default instance type (default: g4dn.xlarge)
-- `DEFAULT_GPU_VOLUME_SIZE`: Default volume size in GB (default: 100)
+Tests run in mock mode — no AWS API calls are made.
 
-**Security note**: Never commit `.env` files to git. Add `*.pem` and `.env` to your `.gitignore`.
+## Known Limitations
 
-## Documentation
+- YAML parser handles flat and one-level nested structures only (sufficient for config/presets)
+- Cost estimates are approximate (based on on-demand us-west-2 rates)
+- Spot price comparison uses current on-demand estimates, not real-time pricing
+- `cleanup` uses launch time as proxy for stop time (AWS doesn't expose exact stop timestamp easily)
+- The `--gen-config` SSH feature generates a point-in-time snapshot; IPs change on restart
+- Bastion/ProxyJump with different keys requires ProxyCommand instead of ProxyJump
 
-Complete setup instructions and usage examples are in [docs/setup-guide.md](docs/setup-guide.md).
+## Legacy Scripts
 
-Topics covered:
-- AWS prerequisites and CLI setup
-- Creating key pairs and security groups
-- Setting up S3 storage
-- EBS snapshots and backups
-- Elastic IP management
-- GPU spot instance management
-- Cost optimization tips
-- Troubleshooting common issues
-- Security best practices
+The original `scripts/` directory is preserved for backward compatibility. The new `bin/ec2` CLI supersedes these scripts with a unified interface:
 
-## Cost Management
-
-Keep your AWS costs low by following these practices:
-
-1. **Stop instances when not in use**: Stopped instances only pay for storage (~$2/month for 20GB)
-2. **Use spot instances for GPU**: Up to 70% savings vs on-demand pricing
-3. **Monitor with AWS Budgets**: Set alerts at $10, $25, $50
-4. **Terminate GPU instances immediately**: After training jobs complete
-
-## Scripts Reference
-
-### `scripts/launch-gpu.sh`
-
-Launches a GPU spot instance with error handling and auto-detection of latest AMI.
-
-**Usage:**
-```bash
-scripts/launch-gpu.sh [OPTIONS]
-```
-
-**Options:**
-- `-h, --help`: Show help message
-- `--instance-type TYPE`: Instance type (default: g4dn.xlarge)
-- `--key-name NAME`: AWS key pair name
-- `--ssh-key PATH`: Path to SSH private key
-- `--ami-id ID`: AMI ID to use (auto-detected if not specified)
-- `--volume-size SIZE`: Volume size in GB (default: 100)
-
-**Example:**
-```bash
-./scripts/launch-gpu.sh --instance-type g4dn.2xlarge --volume-size 200
-```
-
-### `scripts/list-instances.sh`
-
-Lists all EC2 instances with instance name, ID, type, state, and public IP.
-
-**Usage:**
-```bash
-scripts/list-instances.sh
-```
-
-**Output:**
-```
-Instance Name      InstanceId           InstanceType   State.Name  PublicIpAddress
------------------ -------------------- -------------- ----------- --------------
-gpu-training      i-0abc123def456     g4dn.xlarge     running      54.123.45.67
-datascience-daily i-0xyz789ghi012     t3.medium       running      54.234.56.78
-```
-
-### `scripts/lib.sh`
-
-Shared library containing common functions used by all scripts. Source this file in your scripts:
-
-```bash
-source scripts/lib.sh
-```
-
-**Available functions:**
-- `load_config()`: Load configuration from .env file
-- `check_aws_cli()`: Verify AWS CLI is installed and configured
-- `check_ssh_key()`: Verify SSH key exists and has correct permissions
-- `get_instance_ip()`: Get public IP for an instance
-- `wait_for_instance_ip()`: Wait for instance to have a public IP
-- `find_latest_ami()`: Find latest AMI for a given pattern
-- `print_usage()`: Print usage information
-
-## Troubleshooting
-
-### Can't connect via SSH
-
-1. Check instance is running: `aws ec2 describe-instances --instance-ids <INSTANCE_ID>`
-2. Verify you're using the correct IP
-3. Check security group allows port 22
-4. Verify SSH key permissions: `chmod 400 ~/.ssh/my-datascience-key.pem`
-
-### GPU instance won't launch
-
-GPU spot capacity varies by availability zone. Try specifying a different AZ:
-
-```bash
-./scripts/launch-gpu.sh --instance-type g4dn.xlarge
-# If "InsufficientInstanceCapacity" error, try:
-aws ec2 run-instances ... --placement AvailabilityZone=us-west-2b ...
-```
-
-Check current spot prices:
-```bash
-aws ec2 describe-spot-price-history \
-  --instance-types g4dn.xlarge \
-  --product-descriptions "Linux/UNIX" \
-  --start-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
-  --query 'SpotPriceHistory[*].[AvailabilityZone,SpotPrice]' \
-  --output table
-```
-
-### Out of memory
-
-Consider upgrading to a larger instance type:
-- `t3.large` (8GB RAM)
-- `r6i.large` (16GB RAM)
-
-## Security
-
-### SSH Key Security
-
-- Never commit `.pem` files to git
-- Restrict file permissions: `chmod 400 ~/.ssh/my-datascience-key.pem`
-- Store backups in a password manager or encrypted storage
-- If compromised, delete the key pair in AWS and create a new one
-
-### Restrict SSH Access
-
-By default, the security group allows SSH from `0.0.0.0/0` (anywhere). To restrict to your IP only:
-
-```bash
-# Get your current public IP
-MY_IP=$(curl -s ifconfig.me)
-
-# Add rule for your IP
-aws ec2 authorize-security-group-ingress \
-  --group-id <SG_ID> \
-  --protocol tcp \
-  --port 22 \
-  --cidr ${MY_IP}/32
-
-# Remove the 0.0.0.0/0 rule (optional)
-aws ec2 revoke-security-group-ingress \
-  --group-id <SG_ID> \
-  --protocol tcp \
-  --port 22 \
-  --cidr 0.0.0.0/0
-```
-
-### Alternative: AWS Systems Manager Session Manager
-
-For SSH-key-free access, use SSM Session Manager:
-
-```bash
-aws ssm start-session --target <INSTANCE_ID>
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-## License
-
-This project is open source. See [LICENSE](LICENSE) file for details.
-
-## Author
-
-Created for data scientists who need flexible, cost-effective AWS infrastructure.
+| Legacy Script | New Equivalent |
+|--------------|----------------|
+| `scripts/launch-cpu.sh` | `ec2 up --preset cpu-small --name <name>` |
+| `scripts/launch-gpu.sh` | `ec2 up --preset gpu-t4 --name <name> --spot` |
+| `scripts/list-instances.sh` | `ec2 list` |
+| `scripts/connect-cpu.sh` | `ec2 ssh <name>` |
+| `scripts/connect-gpu.sh` | `ec2 ssh <name>` |
+| `scripts/setup-security-group.sh` | Still useful; run directly |
 
 ## Changelog
 
-### Version 1.0.0 (Current)
+### Version 2.0.0 (Current)
+- Unified `bin/ec2` CLI with subcommands
+- YAML-based config and presets system
+- EIP management (allocate, associate, disassociate, release)
+- Spot instance management (prices, history, cancellation, interruption guide)
+- Orphan resource cleanup scanner (EIPs, volumes, TTL-expired instances)
+- SSH by instance name with bastion/ProxyJump support
+- Dry-run mode for destructive operations
+- Multi-profile and multi-region support
+- Automatic resource tagging (Project, Owner, ManagedBy, TTL)
+- Mock-mode test suite
+- Bootstrap setup wizard
+
+### Version 1.0.0
 - Initial release
 - GPU spot instance launcher with error handling
 - Instance listing script
 - Configuration management via .env files
 - Shared library with common AWS functions
 - Complete setup documentation
+
+## License
+
+This project is open source. See [LICENSE](LICENSE) file for details.

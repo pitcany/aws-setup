@@ -1,0 +1,26 @@
+# gpu-a10: NVIDIA A10G GPU (24 GB VRAM) — training, fine-tuning
+name: gpu-a10
+description: "NVIDIA A10G GPU instance (24 GB VRAM) for training and fine-tuning"
+
+instance_type: g5.xlarge
+# Deep Learning Base OSS Nvidia Driver AMI (Ubuntu 22.04)
+ami_pattern: "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*"
+ami_owner: amazon
+ami_id: ""
+
+volume_size: 200
+root_device: /dev/sda1
+ssh_user: ubuntu
+spot_friendly: true
+
+cost_per_hour: 1.006
+
+post_launch_hint: "Run: nvidia-smi  (drivers pre-installed on Deep Learning AMI)"
+
+gpu_setup_userdata: |
+  #!/bin/bash
+  set -e
+  apt-get update -y
+  apt-get install -y linux-headers-$(uname -r)
+  apt-get install -y nvidia-driver-535 nvidia-utils-535
+  nvidia-smi
