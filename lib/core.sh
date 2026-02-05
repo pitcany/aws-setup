@@ -141,7 +141,7 @@ load_config() {
   CFG_SSH_BASTION_USER="$(_cfg_get ssh_bastion_user "")"
   CFG_SSH_BASTION_KEY_PATH="$(_cfg_get ssh_bastion_key_path "")"
   CFG_SECURITY_GROUP_ID="$(_cfg_get security_group_id "")"
-  CFG_SUBNET_ID="$(_cfg_get subnet_id "")"
+  CFG_SUBNET_ID="$(_cfg_get security_subnet_id "")"
   CFG_TAG_PROJECT="$(_cfg_get tags_Project "aws-setup")"
   CFG_TAG_OWNER="$(_cfg_get tags_Owner "me")"
   CFG_TAG_COST_CENTER="$(_cfg_get tags_CostCenter "")"
@@ -221,7 +221,134 @@ list_presets() {
 }
 
 # ── AWS CLI helpers ───────────────────────────────────────────────────
+mock_aws_cmd() {
+  local output="json"
+  local query=""
+  local args=("$@")
+  for ((i = 0; i < ${#args[@]}; i++)); do
+    case "${args[i]}" in
+      --output)
+        output="${args[i+1]:-}"
+        i=$((i + 1))
+        ;;
+      --query)
+        query="${args[i+1]:-}"
+        i=$((i + 1))
+        ;;
+    esac
+  done
+
+  local service="${args[0]:-}"
+  local operation="${args[1]:-}"
+
+  case "${service}:${operation}" in
+    ec2:describe-instances)
+      if [[ "$output" == "text" || "$output" == "table" ]]; then
+        if [[ "$query" == *"State.Name"* ]]; then
+          printf 'running'
+          return 0
+        fi
+        if [[ "$query" == *"PublicIpAddress"* ]]; then
+          printf '203.0.113.1'
+          return 0
+        fi
+        if [[ "$query" == *"Placement.AvailabilityZone"* ]]; then
+          printf 'us-west-2a'
+          return 0
+        fi
+        if [[ "$query" == *"ImageId"* ]]; then
+          printf 'ami-mock'
+          return 0
+        fi
+        return 0
+      fi
+      if [[ -n "$query" ]]; then
+        printf '[]'
+      else
+        printf '%s' '{"Reservations":[{"Instances":[{"InstanceId":"i-mock","InstanceType":"t3.medium","State":{"Name":"running"},"PublicIpAddress":"203.0.113.1","PrivateIpAddress":"10.0.0.1","Placement":{"AvailabilityZone":"us-west-2a"},"ImageId":"ami-mock","SecurityGroups":[],"SubnetId":"subnet-mock","VpcId":"vpc-mock","KeyName":"mock-key","Tags":[],"BlockDeviceMappings":[]}]}]}'
+      fi
+      return 0
+      ;;
+    ec2:describe-images)
+      if [[ "$output" == "text" || "$output" == "table" ]]; then
+        if [[ -n "$query" ]]; then
+          if [[ "$query" == *"Name"* ]]; then
+            printf 'mock-ami'
+          else
+            printf 'ami-mock'
+          fi
+        fi
+        return 0
+      fi
+      printf '[]'
+      return 0
+      ;;
+    ec2:describe-addresses)
+      if [[ "$output" == "text" || "$output" == "table" ]]; then
+        return 0
+      fi
+      printf '%s' '{"Addresses":[]}'
+      return 0
+      ;;
+    ec2:describe-volumes)
+      if [[ "$output" == "text" || "$output" == "table" ]]; then
+        return 0
+      fi
+      printf '%s' '{"Volumes":[]}'
+      return 0
+      ;;
+    ec2:describe-spot-instance-requests)
+      if [[ "$output" == "text" || "$output" == "table" ]]; then
+        return 0
+      fi
+      printf '%s' '{"SpotInstanceRequests":[]}'
+      return 0
+      ;;
+    ec2:describe-spot-price-history)
+      if [[ "$output" == "text" || "$output" == "table" ]]; then
+        return 0
+      fi
+      printf '%s' '{"SpotPriceHistory":[]}'
+      return 0
+      ;;
+    ec2:allocate-address)
+      printf '%s' '{"AllocationId":"eipalloc-mock","PublicIp":"203.0.113.2"}'
+      return 0
+      ;;
+    ec2:associate-address)
+      printf '%s' '{"AssociationId":"eipassoc-mock"}'
+      return 0
+      ;;
+    ec2:run-instances)
+      printf '%s' '{"Instances":[{"InstanceId":"i-mock"}]}'
+      return 0
+      ;;
+    ec2:create-volume)
+      if [[ "$output" == "text" || "$output" == "table" ]]; then
+        printf 'vol-mock'
+        return 0
+      fi
+      printf '%s' '{"VolumeId":"vol-mock"}'
+      return 0
+      ;;
+    sts:get-caller-identity)
+      printf '%s' '{"Account":"000000000000","UserId":"AIDAMOCK","Arn":"arn:aws:iam::000000000000:user/mock"}'
+      return 0
+      ;;
+  esac
+
+  if [[ "$output" == "json" ]]; then
+    printf '%s' '{}'
+  fi
+  return 0
+}
+
 aws_cmd() {
+  if [[ "$EC2_MOCK" == "true" ]]; then
+    debug "Mock mode — skipping aws $*"
+    mock_aws_cmd "$@"
+    return 0
+  fi
   # Build the base aws command with profile/region
   local cmd=(aws)
   if [[ -n "$CFG_AWS_PROFILE" && "$CFG_AWS_PROFILE" != "default" ]]; then
