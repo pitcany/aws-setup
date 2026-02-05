@@ -102,8 +102,11 @@ cmd_ssh() {
     bastion_key="${bastion_key/#\~/$HOME}"
     ssh_cmd+=(-o "ProxyJump=${bastion_user}@${CFG_SSH_BASTION_HOST}")
     if [[ "$bastion_key" != "$key_path" ]]; then
-      # If bastion uses a different key, we need ProxyCommand instead
-      ssh_cmd=( ssh -i "$key_path" -o "ProxyCommand=ssh -i ${bastion_key} -W %h:%p ${bastion_user}@${CFG_SSH_BASTION_HOST}" )
+      # If bastion uses a different key, we need ProxyCommand instead of ProxyJump.
+      # Quote embedded paths to handle spaces/metacharacters safely.
+      local proxy_cmd
+      printf -v proxy_cmd 'ssh -i %q -W %%h:%%p %q@%q' "$bastion_key" "$bastion_user" "$CFG_SSH_BASTION_HOST"
+      ssh_cmd=( ssh -i "$key_path" -o "ProxyCommand=${proxy_cmd}" )
     fi
   fi
 
