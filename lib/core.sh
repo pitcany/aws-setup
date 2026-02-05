@@ -405,13 +405,12 @@ build_tags() {
 
   if [[ -n "$ttl" && "$ttl" != "0" ]]; then
     tags="${tags} Key=TTLHours,Value=${ttl}"
-    # Compute expiry timestamp
+    # Compute expiry timestamp (epoch is always UTC regardless of -u flag)
     local now
     now="$(date -u +%s 2>/dev/null || date +%s)"
     local expiry=$((now + ttl * 3600))
     local expiry_iso
-    expiry_iso="$(date -u -r "$expiry" '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || \
-                  date -u -d "@$expiry" '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "")"
+    expiry_iso="$(epoch_to_iso "$expiry")"
     if [[ -n "$expiry_iso" ]]; then
       tags="${tags} Key=ExpiresAt,Value=${expiry_iso}"
     fi
@@ -486,26 +485,36 @@ estimate_cost() {
   fi
 }
 
-# ── Portable date parsing ─────────────────────────────────────────────
+# ── Portable date helpers ─────────────────────────────────────────────
 # Convert an ISO-8601 timestamp (e.g. 2024-06-15T10:30:00Z) to epoch seconds.
-# Works on macOS (BSD date) and Linux (GNU date).  Returns "" on failure.
-parse_iso_date() {
+# Works on GNU date (Linux), BSD date (macOS), and python3 as fallback.
 parse_iso_date() {
   local ts="$1"
-  ts="${ts%%.*}"
-  ts="${ts%Z}"
+  # Strip fractional seconds and trailing Z for consistent parsing
+  ts="${ts%%.*}"        # 2024-06-15T10:30:00.123Z → 2024-06-15T10:30:00
+  ts="${ts%Z}"          # 2024-06-15T10:30:00Z     → 2024-06-15T10:30:00
 
-  # GNU date (Linux)
+  # GNU coreutils date (Linux)
   date -u -d "${ts}" +%s 2>/dev/null && return 0
   # BSD date (macOS)
   date -u -j -f '%Y-%m-%dT%H:%M:%S' "${ts}" +%s 2>/dev/null && return 0
-  # Python fallback
-  python3 -c "from datetime import datetime; print(int(datetime.strptime('${ts}','%Y-%m-%dT%H:%M:%S').timestamp()))" 2>/dev/null && return 0
+  # Python fallback (most portable)
+  python3 -c "from datetime import datetime,timezone; print(int(datetime.strptime('${ts}','%Y-%m-%dT%H:%M:%S').replace(tzinfo=timezone.utc).timestamp()))" 2>/dev/null && return 0
 
   return 1
 }
 
-  # All methods failed
+# Convert epoch seconds to ISO-8601 UTC string (inverse of parse_iso_date).
+epoch_to_iso() {
+  local epoch="$1"
+
+  # GNU coreutils date (Linux)
+  date -u -d "@${epoch}" '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null && return 0
+  # BSD date (macOS)
+  date -u -r "$epoch" '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null && return 0
+  # Python fallback
+  python3 -c "from datetime import datetime,timezone; print(datetime.fromtimestamp(${epoch},tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))" 2>/dev/null && return 0
+
   return 1
 }
 
