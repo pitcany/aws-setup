@@ -226,32 +226,51 @@ $(list_presets)"
   local existing
   existing="$(resolve_instance "$inst_name" "--all")"
   if [[ -n "$existing" ]]; then
+    local running_line stopped_line transition_line terminated_line
     local ex_id ex_name ex_state
-    IFS=$'\t' read -r ex_id ex_name ex_state _ _ _ <<< "$(printf '%s\n' "$existing" | head -1)"
-    case "$ex_state" in
-      running)
-        warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
-        info "Instance is already running."
-        return 0
-        ;;
-      stopped)
-        warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
-        if confirm "Start the existing instance instead?"; then
-          cmd_start "$ex_id"
-          return $?
-        fi
-        return 1
-        ;;
-      pending|stopping|shutting-down)
-        warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
-        info "Instance is currently $ex_state. Wait for it to settle before retrying."
-        return 1
-        ;;
-      terminated)
-        # Terminated instances are gone — safe to reuse the name
-        debug "Found terminated instance $ex_id with same name; proceeding with new launch"
-        ;;
-    esac
+    while IFS=$'\t' read -r ex_id ex_name ex_state _ _ _; do
+      case "$ex_state" in
+        running)
+          [[ -z "$running_line" ]] && running_line="${ex_id}"$'\t'"${ex_name}"$'\t'"${ex_state}"
+          ;;
+        stopped)
+          [[ -z "$stopped_line" ]] && stopped_line="${ex_id}"$'\t'"${ex_name}"$'\t'"${ex_state}"
+          ;;
+        pending|stopping|shutting-down)
+          [[ -z "$transition_line" ]] && transition_line="${ex_id}"$'\t'"${ex_name}"$'\t'"${ex_state}"
+          ;;
+        terminated)
+          [[ -z "$terminated_line" ]] && terminated_line="${ex_id}"$'\t'"${ex_name}"$'\t'"${ex_state}"
+          ;;
+      esac
+    done <<< "$existing"
+
+    if [[ -n "$running_line" ]]; then
+      IFS=$'\t' read -r ex_id ex_name ex_state <<< "$running_line"
+      warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
+      info "Instance is already running."
+      return 0
+    fi
+    if [[ -n "$stopped_line" ]]; then
+      IFS=$'\t' read -r ex_id ex_name ex_state <<< "$stopped_line"
+      warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
+      if confirm "Start the existing instance instead?"; then
+        cmd_start "$ex_id"
+        return $?
+      fi
+      return 1
+    fi
+    if [[ -n "$transition_line" ]]; then
+      IFS=$'\t' read -r ex_id ex_name ex_state <<< "$transition_line"
+      warn "Instance '$inst_name' already exists: $ex_id ($ex_state)"
+      info "Instance is currently $ex_state. Wait for it to settle before retrying."
+      return 1
+    fi
+    if [[ -n "$terminated_line" ]]; then
+      IFS=$'\t' read -r ex_id ex_name ex_state <<< "$terminated_line"
+      # Terminated instances are gone — safe to reuse the name
+      debug "Found terminated instance $ex_id with same name; proceeding with new launch"
+    fi
   fi
 
   # Spot handling
@@ -406,10 +425,15 @@ _create_and_attach_volume() {
   aws_cmd ec2 wait volume-available --volume-ids "$vol_id" 2>/dev/null || true
 
   # Attach
-  aws_cmd ec2 attach-volume \
+  if ! aws_cmd ec2 attach-volume \
     --volume-id "$vol_id" \
     --instance-id "$instance_id" \
-    --device /dev/xvdf >/dev/null
+    --device /dev/xvdf >/dev/null; then
+    warn "Failed to attach volume $vol_id to $instance_id; cleaning up."
+    aws_cmd ec2 delete-volume --volume-id "$vol_id" >/dev/null || \
+      warn "Failed to delete volume $vol_id; remove it manually."
+    return 1
+  fi
 
   log "Volume $vol_id attached to $instance_id as /dev/xvdf"
   info "Mount with: sudo mkfs -t ext4 /dev/xvdf && sudo mount /dev/xvdf /data"

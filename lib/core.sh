@@ -224,7 +224,7 @@ list_presets() {
 aws_cmd() {
   # Build the base aws command with profile/region
   local cmd=(aws)
-  if [[ -n "$CFG_AWS_PROFILE" && "$CFG_AWS_PROFILE" != "default" ]]; then
+  if [[ -n "$CFG_AWS_PROFILE" ]]; then
     cmd+=(--profile "$CFG_AWS_PROFILE")
   fi
   if [[ -n "$CFG_AWS_REGION" ]]; then
