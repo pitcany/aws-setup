@@ -3,7 +3,7 @@
 # Sourced by bin/ec2; do not run directly.
 
 cmd_cleanup() {
-  local max_stopped_days="${1:-7}"
+  local max_stopped_days=7
   local do_release=false
   local do_delete_vols=false
   local do_terminate=false
