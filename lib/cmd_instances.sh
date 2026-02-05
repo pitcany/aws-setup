@@ -300,6 +300,11 @@ $(list_presets)"
   if [[ -n "$ttl" && ! "$ttl" =~ ^[0-9]+$ ]]; then
     die "Invalid TTL hours: $ttl (must be a non-negative integer)"
   fi
+  if [[ -n "$extra_volume" ]]; then
+    if [[ ! "$extra_volume" =~ ^[0-9]+$ ]] || [[ "$extra_volume" -lt 1 ]]; then
+      die "Invalid extra volume size: $extra_volume (must be a positive integer)"
+    fi
+  fi
 
   # Build tag spec
   local tag_spec
@@ -481,7 +486,7 @@ cmd_start() {
   fi
 
   local line
-  line="$(resolve_one_instance "$identifier")"
+  line="$(resolve_one_instance "$identifier" "--all")"
   local id name state
   IFS=$'\t' read -r id name state _ _ _ <<< "$line"
 
