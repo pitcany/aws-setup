@@ -24,7 +24,7 @@ source "${EC2_ROOT}/lib/cmd_spot.sh"
 source "${EC2_ROOT}/lib/cmd_cleanup.sh"
 
 # ── Version ───────────────────────────────────────────────────────────
-EC2_VERSION="1.0.0"
+EC2_VERSION="2.0.0"
 
 # ── Help (defined early so it can be called from routing) ─────────────
 show_help() {
