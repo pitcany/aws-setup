@@ -82,9 +82,10 @@ parse_yaml() {
       local val="${BASH_REMATCH[2]}"
       val="${val#"${val%%[^[:space:]]*}"}" # ltrim
       val="${val%"${val##*[^[:space:]]}"}" # rtrim
-      # Strip surrounding quotes
-      val="${val#\"}"; val="${val%\"}"
-      val="${val#\'}"; val="${val%\'}"
+      # Strip matching outer quotes only (preserve inner content)
+      if [[ "$val" =~ ^\"(.*)\"$ ]]; then val="${BASH_REMATCH[1]}"
+      elif [[ "$val" =~ ^\'(.*)\'$ ]]; then val="${BASH_REMATCH[1]}"
+      fi
       if [[ -n "$section" ]]; then
         printf '%s\n' "${section}_${key}=${val}"
       fi
@@ -98,8 +99,9 @@ parse_yaml() {
       local val="${BASH_REMATCH[2]}"
       val="${val#"${val%%[^[:space:]]*}"}"
       val="${val%"${val##*[^[:space:]]}"}"
-      val="${val#\"}"; val="${val%\"}"
-      val="${val#\'}"; val="${val%\'}"
+      if [[ "$val" =~ ^\"(.*)\"$ ]]; then val="${BASH_REMATCH[1]}"
+      elif [[ "$val" =~ ^\'(.*)\'$ ]]; then val="${BASH_REMATCH[1]}"
+      fi
       printf '%s\n' "${key}=${val}"
       continue
     fi
@@ -437,6 +439,13 @@ build_tag_spec() {
 
   if [[ -n "$ttl" && "$ttl" != "0" ]]; then
     tag_pairs="${tag_pairs},{Key=TTLHours,Value=${ttl}}"
+    local now expiry expiry_iso
+    now="$(date -u +%s 2>/dev/null || date +%s)"
+    expiry=$((now + ttl * 3600))
+    expiry_iso="$(epoch_to_iso "$expiry" 2>/dev/null || echo "")"
+    if [[ -n "$expiry_iso" ]]; then
+      tag_pairs="${tag_pairs},{Key=ExpiresAt,Value=${expiry_iso}}"
+    fi
   fi
   if [[ -n "$CFG_TAG_COST_CENTER" ]]; then
     tag_pairs="${tag_pairs},{Key=CostCenter,Value=${CFG_TAG_COST_CENTER}}"

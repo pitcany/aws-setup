@@ -301,6 +301,15 @@ $(list_presets)"
     return 0
   fi
 
+  # Validate BDM parameters before building JSON
+  if [[ ! "$vol_size" =~ ^[0-9]+$ ]] || [[ "$vol_size" -lt 1 ]]; then
+    die "Invalid volume size: $vol_size (must be a positive integer)"
+  fi
+  case "$CFG_DEFAULT_VOLUME_TYPE" in
+    gp2|gp3|io1|io2|st1|sc1|standard) ;;
+    *) die "Invalid volume type: $CFG_DEFAULT_VOLUME_TYPE (expected gp2, gp3, io1, io2, st1, sc1, or standard)" ;;
+  esac
+
   # Build block device mapping as a standalone JSON string to avoid
   # fragile nested escaping inside the bash array.
   local bdm

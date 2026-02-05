@@ -114,12 +114,11 @@ _spot_history() {
   local itype="${1:-g4dn.xlarge}"
   local hours="${2:-24}"
 
-  local start_time
-  if date -v -${hours}H &>/dev/null 2>&1; then
-    start_time="$(date -u -v "-${hours}H" '+%Y-%m-%dT%H:%M:%S' 2>/dev/null)"
-  else
-    start_time="$(date -u -d "${hours} hours ago" '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date -u '+%Y-%m-%dT%H:%M:%S')"
-  fi
+  # Compute start_time = now - N hours, using epoch arithmetic for portability
+  local now_epoch start_epoch start_time
+  now_epoch="$(date -u +%s 2>/dev/null || date +%s)"
+  start_epoch=$((now_epoch - hours * 3600))
+  start_time="$(epoch_to_iso "$start_epoch" 2>/dev/null || date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
   info "Spot price history for $itype (last ${hours}h):"
 

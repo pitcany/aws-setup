@@ -18,6 +18,29 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ok()   { printf '  %b✓%b %s\n' "$GREEN" "$NC" "$*"; }
 fail() { printf '  %b✗%b %s\n' "$RED" "$NC" "$*"; }
 warn() { printf '  %b!%b %s\n' "$YELLOW" "$NC" "$*"; }
+
+# Minimal YAML key lookup: _bs_yaml_get <file> <key>
+# Searches for "key: value" anywhere (including indented), returns value.
+_bs_yaml_get() {
+  local file="$1" target="$2"
+  local val=""
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ "$line" =~ ^[[:space:]]*#  ]] && continue
+    if [[ "$line" =~ [[:space:]]*${target}:(.+)$ ]]; then
+      val="${BASH_REMATCH[1]}"
+      val="${val#"${val%%[^[:space:]]*}"}"  # ltrim
+      val="${val%%#*}"                       # strip inline comment
+      val="${val%"${val##*[^[:space:]]}"}"  # rtrim
+      # Strip matching outer quotes only
+      if [[ "$val" =~ ^\"(.*)\"$ ]]; then val="${BASH_REMATCH[1]}"
+      elif [[ "$val" =~ ^\'(.*)\'$ ]]; then val="${BASH_REMATCH[1]}"
+      fi
+      break
+    fi
+  done < "$file"
+  printf '%s' "$val"
+}
 info() { printf '  %b→%b %s\n' "$BLUE" "$NC" "$*"; }
 
 printf '\n%b━━━ EC2 Ops Kit Bootstrap ━━━%b\n\n' "$BOLD" "$NC"
@@ -140,10 +163,9 @@ printf '\n'
 printf '%b[4/6] SSH Key Setup%b\n' "$BOLD" "$NC"
 
 if [[ -f "$config_file" ]]; then
-  # Simple extraction of key_path from yaml
-  key_path="$(grep 'key_path:' "$config_file" 2>/dev/null | head -1 | sed 's/.*key_path:[[:space:]]*//' | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs)"
+  key_path="$(_bs_yaml_get "$config_file" "key_path")"
   key_path="${key_path/#\~/$HOME}"
-  key_name="$(grep 'key_name:' "$config_file" 2>/dev/null | head -1 | sed 's/.*key_name:[[:space:]]*//' | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs)"
+  key_name="$(_bs_yaml_get "$config_file" "key_name")"
 fi
 
 : "${key_path:=$HOME/.ssh/my-ec2-key.pem}"

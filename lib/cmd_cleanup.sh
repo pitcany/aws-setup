@@ -130,10 +130,20 @@ cmd_cleanup() {
   local old_stopped=""
   if [[ -n "$stopped" ]]; then
     while IFS=$'\t' read -r id name itype reason launch; do
-      # Try to extract stop time from StateTransitionReason (format varies)
-      # Fall back to launch time as approximation
-      local ref_epoch
-      ref_epoch="$(parse_iso_date "$launch" 2>/dev/null || echo "0")"
+      # Extract actual stop time from StateTransitionReason if available.
+      # Format: "User initiated (2024-01-15 10:30:00 GMT)" or similar.
+      # Fall back to LaunchTime only if the stop time can't be parsed.
+      local ref_epoch="0"
+      if [[ "$reason" =~ \(([0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}) ]]; then
+        local stop_ts="${BASH_REMATCH[1]}"
+        # Convert "2024-01-15 10:30:00" to ISO format for our parser
+        stop_ts="${stop_ts/ /T}"
+        ref_epoch="$(parse_iso_date "$stop_ts" 2>/dev/null || echo "0")"
+      fi
+      if [[ "$ref_epoch" == "0" ]]; then
+        # Fallback to launch time (less accurate — instance may have run a long time)
+        ref_epoch="$(parse_iso_date "$launch" 2>/dev/null || echo "0")"
+      fi
 
       if [[ $ref_epoch -gt 0 ]]; then
         local age=$((now_epoch - ref_epoch))
@@ -147,7 +157,7 @@ cmd_cleanup() {
 
   if [[ -n "$old_stopped" ]]; then
     found_issues=true
-    printf '    %-19s %-20s %-14s %s\n' "INSTANCE" "NAME" "TYPE" "DAYS SINCE LAUNCH"
+    printf '    %-19s %-20s %-14s %s\n' "INSTANCE" "NAME" "TYPE" "DAYS STOPPED"
     printf '%b' "$old_stopped" | while IFS=$'\t' read -r id name itype days; do
       printf '    %b!%b %-19s %-20s %-14s %s days\n' "$YELLOW" "$NC" "$id" "${name:--}" "$itype" "$days"
     done
