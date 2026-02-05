@@ -114,6 +114,10 @@ _spot_history() {
   local itype="${1:-g4dn.xlarge}"
   local hours="${2:-24}"
 
+  if [[ ! "$hours" =~ ^[0-9]+$ ]]; then
+    die "Invalid hours: $hours (must be a non-negative integer)"
+  fi
+
   # Compute start_time = now - N hours, using epoch arithmetic for portability
   local now_epoch start_epoch start_time
   now_epoch="$(date -u +%s 2>/dev/null || date +%s)"
