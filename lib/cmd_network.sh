@@ -120,7 +120,12 @@ cmd_ssh() {
   info "Connecting to ${name:-$id} ($target_ip)..."
   printf '  %b%s%b\n\n' "$DIM" "${ssh_cmd[*]}" "$NC"
 
-  exec "${ssh_cmd[@]}"
+  "${ssh_cmd[@]}"
+  local rc=$?
+  if [[ $rc -ne 0 ]]; then
+    warn "SSH exited with code $rc"
+  fi
+  return $rc
 }
 
 _ssh_gen_config() {

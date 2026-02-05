@@ -28,15 +28,21 @@ cmd_cleanup() {
   # ── 1. Unassociated Elastic IPs ─────────────────────────────────────
   printf '  %b[1/4] Elastic IPs not associated with any instance%b\n' "$BOLD" "$NC"
   local orphan_eips
+  # No Project filter — orphaned EIPs may have been manually created without tags
   orphan_eips="$(aws_cmd ec2 describe-addresses \
-    --filters "Name=tag:Project,Values=${CFG_TAG_PROJECT}" \
-    --query 'Addresses[?AssociationId==null].[AllocationId, PublicIp, (Tags[?Key==`Name`].Value)[0]]' \
+    --query 'Addresses[?AssociationId==null].[AllocationId, PublicIp, (Tags[?Key==`Name`].Value)[0], (Tags[?Key==`Project`].Value)[0]]' \
     --output text 2>/dev/null || echo "")"
 
   if [[ -n "$orphan_eips" ]]; then
     found_issues=true
-    printf '%s\n' "$orphan_eips" | while IFS=$'\t' read -r alloc ip name; do
-      printf '    %b!%b %-24s %-15s %s\n' "$YELLOW" "$NC" "$alloc" "$ip" "${name:--}"
+    printf '%s\n' "$orphan_eips" | while IFS=$'\t' read -r alloc ip name project; do
+      local tag_hint=""
+      if [[ -n "$project" && "$project" != "None" ]]; then
+        tag_hint=" [${project}]"
+      else
+        tag_hint=" ${DIM}[untagged]${NC}"
+      fi
+      printf '    %b!%b %-24s %-15s %s%b\n' "$YELLOW" "$NC" "$alloc" "$ip" "${name:--}" "$tag_hint"
     done
     local eip_count
     eip_count="$(printf '%s\n' "$orphan_eips" | wc -l | tr -d ' ')"
@@ -62,17 +68,23 @@ cmd_cleanup() {
   # ── 2. Unattached EBS volumes ───────────────────────────────────────
   printf '  %b[2/4] Unattached EBS volumes%b\n' "$BOLD" "$NC"
   local orphan_vols
+  # No Project filter — unattached volumes may have been manually created without tags
   orphan_vols="$(aws_cmd ec2 describe-volumes \
     --filters "Name=status,Values=available" \
-              "Name=tag:Project,Values=${CFG_TAG_PROJECT}" \
-    --query 'Volumes[].[VolumeId, Size, VolumeType, CreateTime, (Tags[?Key==`Name`].Value)[0]]' \
+    --query 'Volumes[].[VolumeId, Size, VolumeType, CreateTime, (Tags[?Key==`Name`].Value)[0], (Tags[?Key==`Project`].Value)[0]]' \
     --output text 2>/dev/null || echo "")"
 
   if [[ -n "$orphan_vols" ]]; then
     found_issues=true
     printf '    %-21s %-8s %-6s %-24s %s\n' "VOLUME ID" "SIZE" "TYPE" "CREATED" "NAME"
-    printf '%s\n' "$orphan_vols" | while IFS=$'\t' read -r vid size vtype created name; do
-      printf '    %b!%b %-20s %-5s GB %-6s %-24s %s\n' "$YELLOW" "$NC" "$vid" "$size" "$vtype" "${created:0:19}" "${name:--}"
+    printf '%s\n' "$orphan_vols" | while IFS=$'\t' read -r vid size vtype created name project; do
+      local tag_hint=""
+      if [[ -n "$project" && "$project" != "None" ]]; then
+        tag_hint=" [${project}]"
+      else
+        tag_hint=" ${DIM}[untagged]${NC}"
+      fi
+      printf '    %b!%b %-20s %-5s GB %-6s %-24s %s%b\n' "$YELLOW" "$NC" "$vid" "$size" "$vtype" "${created:0:19}" "${name:--}" "$tag_hint"
     done
     local vol_count
     vol_count="$(printf '%s\n' "$orphan_vols" | wc -l | tr -d ' ')"
@@ -113,10 +125,8 @@ cmd_cleanup() {
     while IFS=$'\t' read -r id name itype reason launch; do
       # Try to extract stop time from StateTransitionReason (format varies)
       # Fall back to launch time as approximation
-      local ref_time="${launch%%.*}"
       local ref_epoch
-      ref_epoch="$(date -u -j -f '%Y-%m-%dT%H:%M:%S' "$ref_time" +%s 2>/dev/null || \
-                   date -u -d "$ref_time" +%s 2>/dev/null || echo "0")"
+      ref_epoch="$(parse_iso_date "$launch" 2>/dev/null || echo "0")"
 
       if [[ $ref_epoch -gt 0 ]]; then
         local age=$((now_epoch - ref_epoch))
@@ -171,17 +181,14 @@ cmd_cleanup() {
       local expired=false
       if [[ -n "$expires" && "$expires" != "None" ]]; then
         local exp_epoch
-        exp_epoch="$(date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$expires" +%s 2>/dev/null || \
-                     date -u -d "$expires" +%s 2>/dev/null || echo "0")"
+        exp_epoch="$(parse_iso_date "$expires" 2>/dev/null || echo "0")"
         if [[ $exp_epoch -gt 0 && $now_epoch -gt $exp_epoch ]]; then
           expired=true
         fi
       else
         # Compute from launch time + TTL
-        local launch_clean="${launch%%.*}"
         local launch_epoch
-        launch_epoch="$(date -u -j -f '%Y-%m-%dT%H:%M:%S' "$launch_clean" +%s 2>/dev/null || \
-                        date -u -d "$launch_clean" +%s 2>/dev/null || echo "0")"
+        launch_epoch="$(parse_iso_date "$launch" 2>/dev/null || echo "0")"
         if [[ $launch_epoch -gt 0 ]]; then
           local expiry=$((launch_epoch + ttl * 3600))
           if [[ $now_epoch -gt $expiry ]]; then

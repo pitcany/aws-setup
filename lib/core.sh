@@ -285,20 +285,24 @@ dry_run_guard() {
 # ── Instance resolution ──────────────────────────────────────────────
 # Resolve a name-or-id to instance ID(s). Returns tab-separated:
 #   instance_id  name  state  instance_type  public_ip  private_ip
+# Pass "--all" as $2 to include terminated instances.
 resolve_instance() {
   local identifier="$1"
-  local filter
+  local include_all="${2:-}"
+  local filters=()
 
   if [[ "$identifier" == i-* ]]; then
-    # Looks like an instance ID
-    filter="Name=instance-id,Values=${identifier}"
+    filters+=("Name=instance-id,Values=${identifier}")
   else
-    # Treat as a Name tag
-    filter="Name=tag:Name,Values=${identifier}"
+    filters+=("Name=tag:Name,Values=${identifier}")
+  fi
+
+  if [[ "$include_all" != "--all" ]]; then
+    filters+=("Name=instance-state-name,Values=pending,running,stopping,stopped")
   fi
 
   aws_cmd ec2 describe-instances \
-    --filters "$filter" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+    --filters "${filters[@]}" \
     --query 'Reservations[].Instances[].[InstanceId, (Tags[?Key==`Name`].Value)[0], State.Name, InstanceType, PublicIpAddress, PrivateIpAddress]' \
     --output text 2>/dev/null || true
 }
@@ -306,8 +310,9 @@ resolve_instance() {
 # Resolve to exactly one instance or die
 resolve_one_instance() {
   local identifier="$1"
+  local include_all="${2:-}"
   local results
-  results="$(resolve_instance "$identifier")"
+  results="$(resolve_instance "$identifier" "$include_all")"
 
   if [[ -z "$results" ]]; then
     die "No instance found matching '$identifier'"
@@ -479,6 +484,26 @@ estimate_cost() {
     total="$(awk "BEGIN { printf \"%.2f\", $rate * $hours }")"
     printf '%s' "$total"
   fi
+}
+
+# ── Portable date parsing ─────────────────────────────────────────────
+# Convert an ISO-8601 timestamp (e.g. 2024-06-15T10:30:00Z) to epoch seconds.
+# Works on macOS (BSD date) and Linux (GNU date).  Returns "" on failure.
+parse_iso_date() {
+  local ts="$1"
+  # Strip fractional seconds and trailing Z for consistent parsing
+  ts="${ts%%.*}"        # 2024-06-15T10:30:00.123Z → 2024-06-15T10:30:00
+  ts="${ts%Z}"          # 2024-06-15T10:30:00Z     → 2024-06-15T10:30:00
+
+  # GNU coreutils date (Linux)
+  date -u -d "${ts}" +%s 2>/dev/null && return 0
+  # BSD date (macOS)
+  date -u -j -f '%Y-%m-%dT%H:%M:%S' "${ts}" +%s 2>/dev/null && return 0
+  # Python fallback (most portable)
+  python3 -c "from datetime import datetime; print(int(datetime.strptime('${ts}','%Y-%m-%dT%H:%M:%S').strftime('%s')))" 2>/dev/null && return 0
+
+  # All methods failed
+  return 1
 }
 
 # ── Formatting helpers ────────────────────────────────────────────────

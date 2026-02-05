@@ -93,13 +93,20 @@ HELP
 
 # ── ec2 info ──────────────────────────────────────────────────────────
 cmd_info() {
-  local identifier="${1:-}"
+  local identifier="" show_all=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --all) show_all="--all"; shift ;;
+      -h|--help) printf 'Usage: ec2 info [--all] <name|instance-id>\n  --all  Include terminated instances\n'; return 0 ;;
+      *) identifier="$1"; shift ;;
+    esac
+  done
   if [[ -z "$identifier" ]]; then
-    die "Usage: ec2 info <name|instance-id>"
+    die "Usage: ec2 info [--all] <name|instance-id>"
   fi
 
   local line
-  line="$(resolve_one_instance "$identifier")"
+  line="$(resolve_one_instance "$identifier" "$show_all")"
   local id name state itype pip prip
   IFS=$'\t' read -r id name state itype pip prip <<< "$line"
 
@@ -144,8 +151,7 @@ cmd_info() {
     local now
     now="$(date -u +%s 2>/dev/null || date +%s)"
     local launch_epoch
-    launch_epoch="$(date -u -j -f '%Y-%m-%dT%H:%M:%S' "${launch%%.*}" +%s 2>/dev/null || \
-                    date -u -d "${launch%%.*}" +%s 2>/dev/null || echo "")"
+    launch_epoch="$(parse_iso_date "$launch" 2>/dev/null || echo "")"
     if [[ -n "$launch_epoch" ]]; then
       local hours=$(( (now - launch_epoch) / 3600 ))
       [[ $hours -lt 1 ]] && hours=1
