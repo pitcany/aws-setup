@@ -188,7 +188,7 @@ else
   printf '    chmod 400 %s\n' "$key_path"
   printf '\n'
   printf '  Or import an existing key:\n'
-  printf '    aws ec2 import-key-pair --key-name %s --public-key-material fileb://~/.ssh/id_rsa.pub\n' "$key_name"
+  printf '    aws ec2 import-key-pair --key-name %s --public-key-material fileb://%s\n' "$key_name" "${key_path%.pem}.pub"
 fi
 
 printf '\n'
