@@ -127,7 +127,7 @@ cmd_info() {
   printf '  %-18s %s\n' "Public IP:" "${pip:-None}"
   printf '  %-18s %s\n' "Private IP:" "${prip:-None}"
 
-  local az launch ami sg subnet vpc key spot_type lifecycle
+  local az launch ami sg subnet vpc key lifecycle
   az="$(printf '%s' "$inst" | jq -r '.Placement.AvailabilityZone // "-"')"
   launch="$(printf '%s' "$inst" | jq -r '.LaunchTime // "-"')"
   ami="$(printf '%s' "$inst" | jq -r '.ImageId // "-"')"

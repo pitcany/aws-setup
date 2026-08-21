@@ -42,6 +42,7 @@ cmd_ssh() {
       cmd_start "$id"
       # Re-resolve to get IP
       line="$(resolve_one_instance "$id")"
+      # shellcheck disable=SC2034  # itype destructured for positional alignment
       IFS=$'\t' read -r id name state itype pip prip <<< "$line"
     else
       return 1
@@ -147,6 +148,7 @@ _ssh_gen_config() {
   key_path="$(resolve_ssh_key)"
 
   printf '\n# --- EC2 Ops Kit (auto-generated) ---\n'
+  # shellcheck disable=SC2034  # keyname destructured for positional alignment
   printf '%s\n' "$result" | while IFS=$'\t' read -r name pip prip keyname; do
     [[ -z "$name" || "$name" == "None" ]] && continue
     local ip="${pip:-$prip}"
