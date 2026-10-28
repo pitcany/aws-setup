@@ -2,7 +2,8 @@
 # Every build lane is a CPU weight transform; RAM and disk are what matter.
 # A 27B BF16 source is ~54 GB, plus ~28 GB per output pack. For the 122B+ MoEs use
 # --type r7i.8xlarge (256 GB) and --volume-size 1000: enough for the mlx / gguf / cuda builds,
-# which stream the source. q4 and --fidelity load the whole BF16 model: use r7i.12xlarge.
+# which stream the source. --fidelity loads the whole BF16 model: use r7i.12xlarge.
+# quant4 (AWQ / NVFP4) needs llm-compressor and a GPU, neither on this preset.
 name: hf2local-build
 description: "hf2local builds: 128 GB RAM, 500 GB disk (use with userdata/hf2local.sh)"
 

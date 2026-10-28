@@ -166,8 +166,13 @@ for the steps that read the source a tensor at a time:
 | `cuda` build | No: one tensor at a time, 4 GiB output shards | Fits |
 | `gguf` build | No: llama.cpp's converter loads lazily | Fits |
 | `mlx` build | No: lazy load; the quantized output (~65 GB at 4-bit) stays resident until saved | Fits |
-| `q4` build (llm-compressor) | Yes, on CPU | Use r7i.12xlarge (384 GiB) |
+| `quant4` (AWQ / NVFP4, llm-compressor) | Yes, into CPU RAM, then calibrates on a GPU one layer at a time | Not on these presets: see below |
 | `validate-cuda` / `validate-mlx --fidelity` | Yes | Use r7i.12xlarge (384 GiB) |
+
+`hf2local quant4` (calibrated AWQ / NVFP4 packs) does not run on either preset as built. It needs a separate
+interpreter with llm-compressor (`HF2LOCAL_QUANT_PYTHON`), which `userdata/hf2local.sh` does not install, and its
+calibration pass expects a GPU: CPU-only is impractically slow, and the L40S has no native NVFP4. Build 4-bit
+packs on the 5090 box.
 
 `validate-cuda`'s layout and `--compare` gates stay cheap at any size. These limits come from reading the
 hf2local code, not from a measured run: wrap the first 122B build in `/usr/bin/time -v` to get its peak RSS.
