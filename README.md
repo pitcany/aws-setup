@@ -158,8 +158,21 @@ The `cuda` lane (block-FP8) is a CPU transform, so it builds here with no GPU. `
 `--compare` gates are CPU too, and `--fidelity` falls back to CPU (slow; the 128 GB box holds a 27B).
 `--vllm` numbers from an L40S do not stand in for the 5090s: re-run that gate on the serving box.
 
-For the 122B+ MoEs, add `--type r7i.8xlarge --volume-size 1000`. The BF16 `--fidelity` gate on a 27B needs
-~54 GB VRAM: `--preset hf2local-gpu --type g6e.12xlarge` (4× L40S).
+For the 122B+ MoEs (~244 GB of BF16), add `--type r7i.8xlarge --volume-size 1000`. 256 GiB is enough only
+for the steps that read the source a tensor at a time:
+
+| Step | Loads the whole BF16 model? | r7i.8xlarge (256 GiB) |
+|------|-----------------------------|-----------------------|
+| `cuda` build | No: one tensor at a time, 4 GiB output shards | Fits |
+| `gguf` build | No: llama.cpp's converter loads lazily | Fits |
+| `mlx` build | No: lazy load; the quantized output (~65 GB at 4-bit) stays resident until saved | Fits |
+| `q4` build (llm-compressor) | Yes, on CPU | Use r7i.12xlarge (384 GiB) |
+| `validate-cuda` / `validate-mlx --fidelity` | Yes | Use r7i.12xlarge (384 GiB) |
+
+`validate-cuda`'s layout and `--compare` gates stay cheap at any size. These limits come from reading the
+hf2local code, not from a measured run: wrap the first 122B build in `/usr/bin/time -v` to get its peak RSS.
+
+The BF16 `--fidelity` gate on a 27B needs ~54 GB VRAM: `--preset hf2local-gpu --type g6e.12xlarge` (4× L40S).
 
 ### Custom Presets
 
