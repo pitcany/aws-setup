@@ -48,3 +48,5 @@ costs:
   r7i_4xlarge: 1.058
   g6e_2xlarge: 2.242
   g6e_12xlarge: 10.493
+  r7i_8xlarge: 2.117
+  g7e_4xlarge: 3.998

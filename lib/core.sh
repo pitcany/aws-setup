@@ -487,6 +487,8 @@ estimate_cost() {
       r7i.4xlarge) rate="1.058" ;;
       g6e.2xlarge) rate="2.242" ;;
       g6e.12xlarge) rate="10.493" ;;
+      r7i.8xlarge) rate="2.117" ;;
+      g7e.4xlarge) rate="3.998" ;;
       *)           rate="" ;;
     esac
   fi

@@ -51,6 +51,7 @@ aws/
 │   ├── gpu-t4.yaml             # g4dn.xlarge — inference, light training
 │   ├── gpu-a10.yaml            # g5.xlarge — training, fine-tuning
 │   ├── hf2local-build.yaml     # r7i.4xlarge — hf2local model conversion builds
+│   ├── hf2local-quant.yaml     # g7e.4xlarge — hf2local quant4 (AWQ / NVFP4) + vLLM checks
 │   └── hf2local-gpu.yaml       # g6e.2xlarge — hf2local CUDA (FP8) validation
 ├── userdata/
 │   └── hf2local.sh             # first-boot bootstrap for the hf2local presets

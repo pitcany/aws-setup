@@ -55,6 +55,13 @@ case "$test_name" in
     [[ -n "$PRESET_AMI_PATTERN" ]] || { echo "FAIL: ami_pattern empty"; exit 1; }
     ;;
 
+  hf2local-quant)
+    load_preset "hf2local-quant"
+    [[ "$PRESET_INSTANCE_TYPE" == "g7e.4xlarge" ]] || { echo "FAIL: type=$PRESET_INSTANCE_TYPE"; exit 1; }
+    [[ "$PRESET_VOLUME_SIZE" == "500" ]] || { echo "FAIL: vol=$PRESET_VOLUME_SIZE"; exit 1; }
+    [[ -n "$PRESET_AMI_PATTERN" ]] || { echo "FAIL: ami_pattern empty"; exit 1; }
+    ;;
+
   list)
     output="$(list_presets 2>&1)"
     echo "$output" | grep -q "cpu-small" || { echo "FAIL: cpu-small not in list"; exit 1; }

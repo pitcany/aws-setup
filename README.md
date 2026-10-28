@@ -134,19 +134,27 @@ Presets are YAML files in `presets/`. Each defines an instance type, AMI, volume
 | `gpu-a10` | g5.xlarge | 4 | 16 GB | A10G 24GB | 200 GB | Yes | ~$1.01 |
 | `hf2local-build` | r7i.4xlarge | 16 | 128 GB | — | 500 GB | Yes | ~$1.06 |
 | `hf2local-gpu` | g6e.2xlarge | 8 | 64 GB | L40S 48GB | 500 GB | Yes | ~$2.24 |
+| `hf2local-quant` | g7e.4xlarge | 16 | 128 GB | RTX PRO 6000 96GB | 500 GB | Yes | ~$4.00 |
 
 ### hf2local (model conversion)
 
 `hf2local-build` runs [hf2local](https://github.com/pitcany/AI/tree/main/packages/hf2local) builds
 (BF16 Hugging Face → MLX / GGUF / block-FP8), which are CPU, RAM and disk bound.
-`hf2local-gpu` is for `hf2local validate-cuda --vllm`: the L40S has native FP8, unlike the T4/A10G.
-Both take `userdata/hf2local.sh`, which installs uv, a Python 3.12 venv at `/opt/hf2local`
-(torch, transformers), and a built llama.cpp, and sets hf2local's env overrides to `/data`.
+`hf2local-quant` (RTX PRO 6000 Blackwell, the same sm_120 architecture as the RTX 5090) is for
+`hf2local quant4` (AWQ / NVFP4) and `validate-cuda --vllm`. `hf2local-gpu` (L40S) has native FP8 but runs
+NVFP4 weight-only, so its vLLM numbers do not stand for the 5090s.
+`userdata/hf2local.sh` installs uv, a Python 3.12 venv at `/opt/hf2local` (torch, transformers) and a built
+llama.cpp, and sets hf2local's env overrides to `/data`. hf2local itself (a private repo) goes on with
+`packages/hf2local/cloud/ship.sh` from your AI checkout, which also runs the same bootstrap, so the
+userdata is optional: it only gets the toolchain started while the instance boots. That directory's
+README compares AWS with vast.ai and recommends an instance per job.
 
 ```bash
 ec2 up --preset hf2local-build --name hf2l --spot --ttl-hours 8 --user-data userdata/hf2local.sh
-ec2 ssh hf2l                  # then: tail -f /var/log/hf2local-bootstrap.log
-# install hf2local from your AI checkout, then:
+ec2 ssh hf2l --print          # gives the address for ship.sh
+# from your AI checkout (builds the hf2local wheel, installs it, finishes the bootstrap):
+packages/hf2local/cloud/ship.sh -i ~/.ssh/KEY.pem ubuntu@<ip>
+# on the instance, in tmux:
 hf2local prepare Qwen/Qwen3.8-27B@<rev> --out /data/converted --targets mlx,gguf,cuda --bundle-gguf
 # from the Mac (the Mac is behind NAT, so pull rather than `hf2local push`):
 rsync -a hf2l:/data/converted/Qwen3.8-27B-MLX-8bit ~/Models/huggingface/pitcany/
@@ -166,13 +174,12 @@ for the steps that read the source a tensor at a time:
 | `cuda` build | No: one tensor at a time, 4 GiB output shards | Fits |
 | `gguf` build | No: llama.cpp's converter loads lazily | Fits |
 | `mlx` build | No: lazy load; the quantized output (~65 GB at 4-bit) stays resident until saved | Fits |
-| `quant4` (AWQ / NVFP4, llm-compressor) | Yes, into CPU RAM, then calibrates on a GPU one layer at a time | Not on these presets: see below |
+| `quant4` (AWQ / NVFP4, llm-compressor) | Yes, into CPU RAM, then calibrates on a GPU one layer at a time | `hf2local-quant` (27B) or `--type g7e.12xlarge` (122B, 512 GiB) |
 | `validate-cuda` / `validate-mlx --fidelity` | Yes | Use r7i.12xlarge (384 GiB) |
 
-`hf2local quant4` (calibrated AWQ / NVFP4 packs) does not run on either preset as built. It needs a separate
-interpreter with llm-compressor (`HF2LOCAL_QUANT_PYTHON`), which `userdata/hf2local.sh` does not install, and its
-calibration pass expects a GPU: CPU-only is impractically slow, and the L40S has no native NVFP4. Build 4-bit
-packs on the 5090 box.
+`hf2local quant4` (calibrated AWQ / NVFP4 packs) needs a GPU for calibration and an llm-compressor interpreter
+(`HF2LOCAL_QUANT_PYTHON`): `ship.sh ... --quant` installs it. Use `hf2local-quant`. An L40S can build NVFP4
+(calibration is BF16 math) but cannot run it natively, so check those packs on Blackwell.
 
 `validate-cuda`'s layout and `--compare` gates stay cheap at any size. These limits come from reading the
 hf2local code, not from a measured run: wrap the first 122B build in `/usr/bin/time -v` to get its peak RSS.
@@ -279,6 +286,7 @@ aws-setup/
 │   ├── gpu-t4.yaml             # g4dn.xlarge (NVIDIA T4)
 │   ├── gpu-a10.yaml            # g5.xlarge (NVIDIA A10G)
 │   ├── hf2local-build.yaml     # r7i.4xlarge (128 GB RAM) — hf2local builds
+│   ├── hf2local-quant.yaml     # g7e.4xlarge (RTX PRO 6000 Blackwell) — hf2local quant4 + vLLM checks
 │   └── hf2local-gpu.yaml       # g6e.2xlarge (NVIDIA L40S) — hf2local CUDA validation
 ├── userdata/
 │   └── hf2local.sh             # first-boot bootstrap for the hf2local presets

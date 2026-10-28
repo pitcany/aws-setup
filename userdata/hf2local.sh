@@ -4,8 +4,9 @@
 #   ec2 up --preset hf2local-build --name hf2l --spot --ttl-hours 8 --user-data userdata/hf2local.sh
 #
 # Installs the toolchain hf2local expects and points its env overrides at /data.
-# hf2local itself is not installed here: it lives in a private repo, so install it
-# from your checkout once you are logged in (see the preset's post_launch_hint).
+# hf2local itself is not installed here: it lives in a private repo. From your AI checkout run
+# packages/hf2local/cloud/ship.sh -i KEY ubuntu@IP, which installs it and finishes the same
+# bootstrap (its bootstrap.sh reuses /opt/hf2local, ~/llama.cpp and /data set up here).
 set -euo pipefail
 exec > >(tee -a /var/log/hf2local-bootstrap.log) 2>&1
 
