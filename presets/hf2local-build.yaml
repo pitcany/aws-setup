@@ -1,0 +1,22 @@
+# hf2local-build: big-RAM CPU box for hf2local builds (BF16 HF -> MLX / GGUF / block-FP8)
+# Every build lane is a CPU weight transform; RAM and disk are what matter.
+# A 27B BF16 source is ~54 GB, plus ~28 GB per output pack. For the 122B+ MoEs use
+# --type r7i.8xlarge (256 GB) and --volume-size 1000.
+name: hf2local-build
+description: "hf2local builds: 128 GB RAM, 500 GB disk (use with userdata/hf2local.sh)"
+
+instance_type: r7i.4xlarge
+# Ubuntu 24.04 (Python 3.12, which hf2local requires)
+ami_pattern: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
+ami_owner: "099720109477"
+ami_id: ""
+
+volume_size: 500
+root_device: /dev/sda1
+ssh_user: ubuntu
+# Interruption deletes the root volume and the HF cache with it; fine for one-off builds
+spot_friendly: true
+
+cost_per_hour: 1.058
+
+post_launch_hint: "Bootstrap log: /var/log/hf2local-bootstrap.log. Then: uv pip install --python /opt/hf2local/bin/python <AI checkout>/packages/hf2local"

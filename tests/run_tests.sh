@@ -69,6 +69,8 @@ run_test "preset cpu-small loads" bash "$SCRIPT_DIR/test_presets.sh" cpu-small
 run_test "preset cpu-large loads" bash "$SCRIPT_DIR/test_presets.sh" cpu-large
 run_test "preset gpu-t4 loads" bash "$SCRIPT_DIR/test_presets.sh" gpu-t4
 run_test "preset gpu-a10 loads" bash "$SCRIPT_DIR/test_presets.sh" gpu-a10
+run_test "preset hf2local-build loads" bash "$SCRIPT_DIR/test_presets.sh" hf2local-build
+run_test "preset hf2local-gpu loads" bash "$SCRIPT_DIR/test_presets.sh" hf2local-gpu
 run_test "list_presets output" bash "$SCRIPT_DIR/test_presets.sh" list
 run_test "preset missing fails" bash "$SCRIPT_DIR/test_presets.sh" missing
 

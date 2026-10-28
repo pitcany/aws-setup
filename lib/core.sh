@@ -484,6 +484,9 @@ estimate_cost() {
       g5.xlarge)   rate="1.006" ;;
       g5.2xlarge)  rate="1.212" ;;
       p3.2xlarge)  rate="3.06" ;;
+      r7i.4xlarge) rate="1.058" ;;
+      g6e.2xlarge) rate="2.242" ;;
+      g6e.12xlarge) rate="10.493" ;;
       *)           rate="" ;;
     esac
   fi

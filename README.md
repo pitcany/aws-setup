@@ -132,6 +132,34 @@ Presets are YAML files in `presets/`. Each defines an instance type, AMI, volume
 | `cpu-large` | c5.2xlarge | 8 | 16 GB | — | 100 GB | Yes | ~$0.34 |
 | `gpu-t4` | g4dn.xlarge | 4 | 16 GB | T4 16GB | 100 GB | Yes | ~$0.53 |
 | `gpu-a10` | g5.xlarge | 4 | 16 GB | A10G 24GB | 200 GB | Yes | ~$1.01 |
+| `hf2local-build` | r7i.4xlarge | 16 | 128 GB | — | 500 GB | Yes | ~$1.06 |
+| `hf2local-gpu` | g6e.2xlarge | 8 | 64 GB | L40S 48GB | 500 GB | Yes | ~$2.24 |
+
+### hf2local (model conversion)
+
+`hf2local-build` runs [hf2local](https://github.com/pitcany/AI/tree/main/packages/hf2local) builds
+(BF16 Hugging Face → MLX / GGUF / block-FP8), which are CPU, RAM and disk bound.
+`hf2local-gpu` is for `hf2local validate-cuda --vllm`: the L40S has native FP8, unlike the T4/A10G.
+Both take `userdata/hf2local.sh`, which installs uv, a Python 3.12 venv at `/opt/hf2local`
+(torch, transformers), and a built llama.cpp, and sets hf2local's env overrides to `/data`.
+
+```bash
+ec2 up --preset hf2local-build --name hf2l --spot --ttl-hours 8 --user-data userdata/hf2local.sh
+ec2 ssh hf2l                  # then: tail -f /var/log/hf2local-bootstrap.log
+# install hf2local from your AI checkout, then:
+hf2local prepare Qwen/Qwen3.8-27B@<rev> --out /data/converted --targets mlx,gguf,cuda --bundle-gguf
+# from the Mac (the Mac is behind NAT, so pull rather than `hf2local push`):
+rsync -a hf2l:/data/converted/Qwen3.8-27B-MLX-8bit ~/Models/huggingface/pitcany/
+# park CUDA/GGUF packs for later (the root volume dies with the instance):
+aws s3 sync /data/converted/Qwen3.8-27B-FP8 s3://<bucket>/converted/Qwen3.8-27B-FP8
+```
+
+The `cuda` lane (block-FP8) is a CPU transform, so it builds here with no GPU. `validate-cuda`'s layout and
+`--compare` gates are CPU too, and `--fidelity` falls back to CPU (slow; the 128 GB box holds a 27B).
+`--vllm` numbers from an L40S do not stand in for the 5090s: re-run that gate on the serving box.
+
+For the 122B+ MoEs, add `--type r7i.8xlarge --volume-size 1000`. The BF16 `--fidelity` gate on a 27B needs
+~54 GB VRAM: `--preset hf2local-gpu --type g6e.12xlarge` (4× L40S).
 
 ### Custom Presets
 
@@ -231,7 +259,11 @@ aws-setup/
 │   ├── cpu-small.yaml          # t3.medium
 │   ├── cpu-large.yaml          # c5.2xlarge
 │   ├── gpu-t4.yaml             # g4dn.xlarge (NVIDIA T4)
-│   └── gpu-a10.yaml            # g5.xlarge (NVIDIA A10G)
+│   ├── gpu-a10.yaml            # g5.xlarge (NVIDIA A10G)
+│   ├── hf2local-build.yaml     # r7i.4xlarge (128 GB RAM) — hf2local builds
+│   └── hf2local-gpu.yaml       # g6e.2xlarge (NVIDIA L40S) — hf2local CUDA validation
+├── userdata/
+│   └── hf2local.sh             # first-boot bootstrap for the hf2local presets
 ├── scripts/                    # Legacy scripts (preserved)
 │   ├── lib.sh
 │   ├── launch-cpu.sh
