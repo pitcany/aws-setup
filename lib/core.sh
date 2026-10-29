@@ -374,7 +374,7 @@ resolve_ami() {
     die "No AMI ID or pattern specified"
   fi
 
-  info "Auto-detecting AMI: ${pattern}..."
+  info "Auto-detecting AMI: ${pattern}..." >&2
 
   local owner_args=()
   if [[ -n "$owner" ]]; then
@@ -393,7 +393,7 @@ resolve_ami() {
     die "Could not find AMI matching pattern: $pattern"
   fi
 
-  info "Found AMI: $ami"
+  info "Found AMI: $ami" >&2
   printf '%s' "$ami"
 }
 

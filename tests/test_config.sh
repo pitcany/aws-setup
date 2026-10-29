@@ -80,6 +80,13 @@ YAML
     [[ "$CFG_TAG_PROJECT" == "aws-setup" ]] || { echo "FAIL: default project=$CFG_TAG_PROJECT"; exit 1; }
     ;;
 
+  resolve_ami_stdout)
+    # Callers capture resolve_ami's stdout as the AMI ID: its log lines must not end up in it
+    aws_cmd() { printf 'ami-0123456789abcdef0\n'; }
+    ami="$(resolve_ami "" "ubuntu/images/*" "099720109477" 2>/dev/null)"
+    [[ "$ami" == "ami-0123456789abcdef0" ]] || { echo "FAIL: resolve_ami stdout='$ami'"; exit 1; }
+    ;;
+
   *)
     echo "Unknown test: $test_name"
     exit 1

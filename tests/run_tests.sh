@@ -59,6 +59,7 @@ run_test "parse_yaml nested" bash "$SCRIPT_DIR/test_config.sh" nested
 run_test "parse_yaml comments" bash "$SCRIPT_DIR/test_config.sh" comments
 run_test "parse_yaml quotes" bash "$SCRIPT_DIR/test_config.sh" quotes
 run_test "load_config defaults" bash "$SCRIPT_DIR/test_config.sh" defaults
+run_test "resolve_ami stdout is the AMI only" bash "$SCRIPT_DIR/test_config.sh" resolve_ami_stdout
 
 printf '\n'
 
