@@ -186,6 +186,7 @@ cmd_up() {
   local override_type="" override_ami="" override_vol_size=""
 
   while [[ $# -gt 0 ]]; do
+    # shellcheck disable=SC2034  # EC2_DRY_RUN used by dry_run_guard
     case "$1" in
       --preset)       preset="$2"; shift 2 ;;
       --name)         inst_name="$2"; shift 2 ;;
@@ -196,8 +197,10 @@ cmd_up() {
       --volume-size)  override_vol_size="$2"; shift 2 ;;
       --volume)       extra_volume="$2"; shift 2 ;;
       --user-data)    user_data="$2"; shift 2 ;;
+      --dry-run)      EC2_DRY_RUN="true"; shift ;;
       -h|--help)      _up_help; return 0 ;;
-      *)              warn "Unknown option: $1"; shift ;;
+      # up creates billable resources: a mistyped flag must stop here, not launch
+      *)              die "Unknown option for up: $1 (nothing was created; see: ec2 up --help)" ;;
     esac
   done
 

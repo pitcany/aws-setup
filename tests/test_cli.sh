@@ -100,6 +100,34 @@ case "$test_name" in
     echo "$output" | grep -q "already running" || { echo "FAIL: expected 'already running', got: $output"; exit 1; }
     ;;
 
+  up_dry_run_flag)
+    # `ec2 up ... --dry-run` (flag after the command, as its help shows) must not launch
+    source "${PROJECT_ROOT}/lib/cmd_instances.sh"
+    resolve_ami() { printf 'ami-0123456789abcdef0'; }
+    resolve_instance() { :; }
+    CFG_SECURITY_GROUP_ID="sg-0123456789abcdef0" CFG_SSH_KEY_NAME="test-key"   # the real config.yaml is not read in tests
+    calls="$(mktemp)"
+    aws_cmd() { echo "$*" >> "$calls"; }
+    output="$(cmd_up --preset cpu-small --name dry1 --dry-run 2>&1)" || { echo "FAIL: exited non-zero: $output"; exit 1; }
+    echo "$output" | grep -q "dry-run" || { echo "FAIL: no dry-run notice: $output"; exit 1; }
+    ! grep -q "run-instances" "$calls" || { echo "FAIL: run-instances was called"; exit 1; }
+    ;;
+
+  up_unknown_option)
+    # a mistyped flag must stop before anything is created
+    source "${PROJECT_ROOT}/lib/cmd_instances.sh"
+    resolve_ami() { printf 'ami-0123456789abcdef0'; }
+    resolve_instance() { :; }
+    CFG_SECURITY_GROUP_ID="sg-0123456789abcdef0" CFG_SSH_KEY_NAME="test-key"   # the real config.yaml is not read in tests
+    calls="$(mktemp)"
+    aws_cmd() { echo "$*" >> "$calls"; }
+    if output="$(cmd_up --preset cpu-small --name typo1 --dry-rnu 2>&1)"; then
+      echo "FAIL: unknown option should exit non-zero"; exit 1
+    fi
+    echo "$output" | grep -q "Unknown option for up: --dry-rnu" || { echo "FAIL: message: $output"; exit 1; }
+    ! grep -q "run-instances" "$calls" || { echo "FAIL: run-instances was called"; exit 1; }
+    ;;
+
   *)
     echo "Unknown test: $test_name"
     exit 1
