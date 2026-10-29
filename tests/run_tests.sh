@@ -91,6 +91,8 @@ run_test "tag builder" bash "$SCRIPT_DIR/test_cli.sh" tags
 run_test "format_state coloring" bash "$SCRIPT_DIR/test_cli.sh" format_state
 run_test "cost estimation" bash "$SCRIPT_DIR/test_cli.sh" cost
 run_test "up with an existing name (set -u)" bash "$SCRIPT_DIR/test_cli.sh" up_existing_name
+run_test "up --dry-run after the command launches nothing" bash "$SCRIPT_DIR/test_cli.sh" up_dry_run_flag
+run_test "up with an unknown option stops" bash "$SCRIPT_DIR/test_cli.sh" up_unknown_option
 
 printf '\n'
 
