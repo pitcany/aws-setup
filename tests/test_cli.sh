@@ -91,6 +91,15 @@ case "$test_name" in
     [[ -z "$cost" ]] || { echo "FAIL: unknown type should return empty, got $cost"; exit 1; }
     ;;
 
+  up_existing_name)
+    # cmd_up's duplicate-name scan runs under set -u: its locals must start empty
+    source "${PROJECT_ROOT}/lib/cmd_instances.sh"
+    resolve_ami() { printf 'ami-0123456789abcdef0'; }
+    resolve_instance() { printf 'i-0aaa\thf2l\trunning\tt3.micro\t1.2.3.4\t10.0.0.1\n'; }
+    output="$(cmd_up --preset cpu-small --name hf2l 2>&1)" || { echo "FAIL: cmd_up exited non-zero: $output"; exit 1; }
+    echo "$output" | grep -q "already running" || { echo "FAIL: expected 'already running', got: $output"; exit 1; }
+    ;;
+
   *)
     echo "Unknown test: $test_name"
     exit 1

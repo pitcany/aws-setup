@@ -145,8 +145,9 @@ Presets are YAML files in `presets/`. Each defines an instance type, AMI, volume
 NVFP4 weight-only, so its vLLM numbers do not stand for the 5090s.
 `userdata/hf2local.sh` installs uv, a Python 3.12 venv at `/opt/hf2local` (torch, transformers) and a built
 llama.cpp, and sets hf2local's env overrides to `/data`. hf2local itself (a private repo) goes on with
-`packages/hf2local/cloud/ship.sh` from your AI checkout, which also runs the same bootstrap, so the
-userdata is optional: it only gets the toolchain started while the instance boots. That directory's
+`packages/hf2local/cloud/ship.sh` from your AI checkout. ship.sh runs its own idempotent
+`bootstrap.sh`, which sets up the same layout, so the userdata is optional: it only gets the
+toolchain started while the instance boots. That directory's
 README compares AWS with vast.ai and recommends an instance per job.
 
 ```bash

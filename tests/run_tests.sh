@@ -90,6 +90,7 @@ run_test "global --dry-run parsing" bash "$SCRIPT_DIR/test_cli.sh" dryrun
 run_test "tag builder" bash "$SCRIPT_DIR/test_cli.sh" tags
 run_test "format_state coloring" bash "$SCRIPT_DIR/test_cli.sh" format_state
 run_test "cost estimation" bash "$SCRIPT_DIR/test_cli.sh" cost
+run_test "up with an existing name (set -u)" bash "$SCRIPT_DIR/test_cli.sh" up_existing_name
 
 printf '\n'
 

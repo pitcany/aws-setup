@@ -34,7 +34,7 @@ sudo -u ubuntu -H "$UV" pip install --python /opt/hf2local/bin/python \
   transformers accelerate sentencepiece protobuf huggingface_hub
 
 # ── llama.cpp (converter + llama-completion / llama-speculative for validate-gguf) ──
-sudo -u ubuntu -H git clone --depth 1 https://github.com/ggml-org/llama.cpp /home/ubuntu/llama.cpp
+[[ -d /home/ubuntu/llama.cpp/.git ]] || sudo -u ubuntu -H git clone --depth 1 https://github.com/ggml-org/llama.cpp /home/ubuntu/llama.cpp
 sudo -u ubuntu -H cmake -S /home/ubuntu/llama.cpp -B /home/ubuntu/llama.cpp/build -DCMAKE_BUILD_TYPE=Release
 sudo -u ubuntu -H cmake --build /home/ubuntu/llama.cpp/build -j "$(nproc)"
 # gguf (+ numpy) for convert_hf_to_gguf.py, pinned to the cloned llama.cpp
