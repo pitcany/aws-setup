@@ -41,10 +41,32 @@ case "$test_name" in
     [[ "$PRESET_VOLUME_SIZE" == "200" ]] || { echo "FAIL: vol=$PRESET_VOLUME_SIZE"; exit 1; }
     ;;
 
+  hf2local-build)
+    load_preset "hf2local-build"
+    [[ "$PRESET_INSTANCE_TYPE" == "r7i.4xlarge" ]] || { echo "FAIL: type=$PRESET_INSTANCE_TYPE"; exit 1; }
+    [[ "$PRESET_VOLUME_SIZE" == "500" ]] || { echo "FAIL: vol=$PRESET_VOLUME_SIZE"; exit 1; }
+    [[ "$PRESET_AMI_PATTERN" == *noble-24.04* ]] || { echo "FAIL: ami_pattern=$PRESET_AMI_PATTERN"; exit 1; }
+    ;;
+
+  hf2local-gpu)
+    load_preset "hf2local-gpu"
+    [[ "$PRESET_INSTANCE_TYPE" == "g6e.2xlarge" ]] || { echo "FAIL: type=$PRESET_INSTANCE_TYPE"; exit 1; }
+    [[ "$PRESET_VOLUME_SIZE" == "500" ]] || { echo "FAIL: vol=$PRESET_VOLUME_SIZE"; exit 1; }
+    [[ -n "$PRESET_AMI_PATTERN" ]] || { echo "FAIL: ami_pattern empty"; exit 1; }
+    ;;
+
+  hf2local-quant)
+    load_preset "hf2local-quant"
+    [[ "$PRESET_INSTANCE_TYPE" == "g7e.4xlarge" ]] || { echo "FAIL: type=$PRESET_INSTANCE_TYPE"; exit 1; }
+    [[ "$PRESET_VOLUME_SIZE" == "500" ]] || { echo "FAIL: vol=$PRESET_VOLUME_SIZE"; exit 1; }
+    [[ -n "$PRESET_AMI_PATTERN" ]] || { echo "FAIL: ami_pattern empty"; exit 1; }
+    ;;
+
   list)
     output="$(list_presets 2>&1)"
     echo "$output" | grep -q "cpu-small" || { echo "FAIL: cpu-small not in list"; exit 1; }
     echo "$output" | grep -q "gpu-t4" || { echo "FAIL: gpu-t4 not in list"; exit 1; }
+    echo "$output" | grep -q "hf2local-build" || { echo "FAIL: hf2local-build not in list"; exit 1; }
     ;;
 
   missing)

@@ -226,7 +226,7 @@ $(list_presets)"
   local existing
   existing="$(resolve_instance "$inst_name" "--all")"
   if [[ -n "$existing" ]]; then
-    local running_line stopped_line transition_line terminated_line
+    local running_line="" stopped_line="" transition_line="" terminated_line=""
     local ex_id ex_name ex_state
     while IFS=$'\t' read -r ex_id ex_name ex_state _ _ _; do
       case "$ex_state" in

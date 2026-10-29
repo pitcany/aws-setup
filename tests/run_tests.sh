@@ -59,6 +59,7 @@ run_test "parse_yaml nested" bash "$SCRIPT_DIR/test_config.sh" nested
 run_test "parse_yaml comments" bash "$SCRIPT_DIR/test_config.sh" comments
 run_test "parse_yaml quotes" bash "$SCRIPT_DIR/test_config.sh" quotes
 run_test "load_config defaults" bash "$SCRIPT_DIR/test_config.sh" defaults
+run_test "resolve_ami stdout is the AMI only" bash "$SCRIPT_DIR/test_config.sh" resolve_ami_stdout
 
 printf '\n'
 
@@ -69,6 +70,9 @@ run_test "preset cpu-small loads" bash "$SCRIPT_DIR/test_presets.sh" cpu-small
 run_test "preset cpu-large loads" bash "$SCRIPT_DIR/test_presets.sh" cpu-large
 run_test "preset gpu-t4 loads" bash "$SCRIPT_DIR/test_presets.sh" gpu-t4
 run_test "preset gpu-a10 loads" bash "$SCRIPT_DIR/test_presets.sh" gpu-a10
+run_test "preset hf2local-build loads" bash "$SCRIPT_DIR/test_presets.sh" hf2local-build
+run_test "preset hf2local-gpu loads" bash "$SCRIPT_DIR/test_presets.sh" hf2local-gpu
+run_test "preset hf2local-quant loads" bash "$SCRIPT_DIR/test_presets.sh" hf2local-quant
 run_test "list_presets output" bash "$SCRIPT_DIR/test_presets.sh" list
 run_test "preset missing fails" bash "$SCRIPT_DIR/test_presets.sh" missing
 
@@ -86,6 +90,7 @@ run_test "global --dry-run parsing" bash "$SCRIPT_DIR/test_cli.sh" dryrun
 run_test "tag builder" bash "$SCRIPT_DIR/test_cli.sh" tags
 run_test "format_state coloring" bash "$SCRIPT_DIR/test_cli.sh" format_state
 run_test "cost estimation" bash "$SCRIPT_DIR/test_cli.sh" cost
+run_test "up with an existing name (set -u)" bash "$SCRIPT_DIR/test_cli.sh" up_existing_name
 
 printf '\n'
 

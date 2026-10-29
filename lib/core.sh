@@ -374,7 +374,7 @@ resolve_ami() {
     die "No AMI ID or pattern specified"
   fi
 
-  info "Auto-detecting AMI: ${pattern}..."
+  info "Auto-detecting AMI: ${pattern}..." >&2
 
   local owner_args=()
   if [[ -n "$owner" ]]; then
@@ -393,7 +393,7 @@ resolve_ami() {
     die "Could not find AMI matching pattern: $pattern"
   fi
 
-  info "Found AMI: $ami"
+  info "Found AMI: $ami" >&2
   printf '%s' "$ami"
 }
 
@@ -484,6 +484,11 @@ estimate_cost() {
       g5.xlarge)   rate="1.006" ;;
       g5.2xlarge)  rate="1.212" ;;
       p3.2xlarge)  rate="3.06" ;;
+      r7i.4xlarge) rate="1.058" ;;
+      g6e.2xlarge) rate="2.242" ;;
+      g6e.12xlarge) rate="10.493" ;;
+      r7i.8xlarge) rate="2.117" ;;
+      g7e.4xlarge) rate="3.998" ;;
       *)           rate="" ;;
     esac
   fi

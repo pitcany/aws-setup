@@ -49,7 +49,12 @@ aws/
 │   ├── cpu-small.yaml          # t3.medium — dev, notebooks
 │   ├── cpu-large.yaml          # c5.2xlarge — batch processing
 │   ├── gpu-t4.yaml             # g4dn.xlarge — inference, light training
-│   └── gpu-a10.yaml            # g5.xlarge — training, fine-tuning
+│   ├── gpu-a10.yaml            # g5.xlarge — training, fine-tuning
+│   ├── hf2local-build.yaml     # r7i.4xlarge — hf2local model conversion builds
+│   ├── hf2local-quant.yaml     # g7e.4xlarge — hf2local quant4 (AWQ / NVFP4) + vLLM checks
+│   └── hf2local-gpu.yaml       # g6e.2xlarge — hf2local CUDA (FP8) validation
+├── userdata/
+│   └── hf2local.sh             # first-boot bootstrap for the hf2local presets
 ├── tests/
 │   ├── run_tests.sh            # Test runner (lint + unit tests)
 │   ├── test_cli.sh             # CLI routing and flag parsing

@@ -1,0 +1,23 @@
+# hf2local-quant: NVIDIA RTX PRO 6000 Blackwell (96 GB, sm_120 like the RTX 5090) for
+# hf2local quant4 (AWQ / NVFP4) and validate-cuda --vllm. Native NVFP4, so vLLM numbers carry
+# over to the 5090s, unlike the L40S. quant4 loads the whole BF16 model into RAM: 128 GiB holds
+# a 27B; for a 122B use --type g7e.12xlarge (2 GPUs, 512 GiB). Needs 16 vCPUs of G and VT quota.
+# Install with hf2local's cloud/ship.sh ... --quant --vllm (llm-compressor + vLLM venvs).
+name: hf2local-quant
+description: "hf2local quant4 + vLLM checks: RTX PRO 6000 Blackwell 96 GB, 128 GB RAM"
+
+instance_type: g7e.4xlarge
+# Deep Learning Base OSS Nvidia Driver AMI: Blackwell needs a recent driver, and the newest
+# image matching this pattern is picked at launch. Check `nvidia-smi` on first login.
+ami_pattern: "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*"
+ami_owner: amazon
+ami_id: ""
+
+volume_size: 500
+root_device: /dev/sda1
+ssh_user: ubuntu
+spot_friendly: true
+
+cost_per_hour: 3.998
+
+post_launch_hint: "Run: nvidia-smi. Then from your AI checkout: packages/hf2local/cloud/ship.sh -i KEY ubuntu@IP --quant --vllm"
